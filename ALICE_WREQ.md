@@ -51,3 +51,24 @@ wreq-util = { path = "../vendor/wreq-util", ... }
 - wreq-js: MIT  
 - wreq-rust / wreq-util: Apache-2.0 (upstream)
 EOF
+## npm publish (`@alice-doctor/wreq-js`)
+
+```bash
+# 1) https://www.npmjs.com/org/create  → organization: alice-wreq
+# 2) npm login
+npm login
+
+# 3) from this repo (after build)
+npm run build
+npm publish --access public
+```
+
+App:
+
+```json
+"@alice-doctor/wreq-js": "^2.3.1-alice.1"
+```
+
+```ts
+import { fetch, getProfiles } from "@alice-doctor/wreq-js";
+```

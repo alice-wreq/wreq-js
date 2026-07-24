@@ -1,6 +1,6 @@
 {
-  "name": "wreq-js",
-  "version": "2.3.1-alice.1",
+  "name": "@alice-doctor/wreq-js",
+  "version": "2.3.1",
   "description": "alice-wreq fork: Node/TS HTTP client with browser TLS impersonation. Built on alice-wreq/wreq-rust + vendored wreq-util (safari_ios_26.6 peet).",
   "type": "module",
   "main": "./dist/wreq-js.cjs",
@@ -120,5 +120,9 @@
       "aarch64-unknown-linux-musl",
       "x86_64-pc-windows-msvc"
     ]
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
   }
 }
