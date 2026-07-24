@@ -1,0 +1,119 @@
+#!/usr/bin/env node
+/**
+ * postinstall: ensure platform-native addon is present.
+ * 1) already in package (rust/wreq-js.<platform>.node)
+ * 2) else download from GitHub Releases (alice-wreq/wreq-js)
+ * 3) else print build hint (requires Rust)
+ */
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import https from "node:https";
+import { createWriteStream } from "node:fs";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const root = path.resolve(__dirname, "..");
+const rustDir = path.join(root, "rust");
+
+function platformTriple() {
+  const { platform, arch } = process;
+  if (platform === "darwin" && arch === "arm64") return "darwin-arm64";
+  if (platform === "darwin" && arch === "x64") return "darwin-x64";
+  if (platform === "linux" && arch === "x64") {
+    // prefer gnu; musl users can set WREQ_JS_TRIPLE
+    return process.env.WREQ_JS_TRIPLE || "linux-x64-gnu";
+  }
+  if (platform === "linux" && arch === "arm64") {
+    return process.env.WREQ_JS_TRIPLE || "linux-arm64-gnu";
+  }
+  if (platform === "win32" && arch === "x64") return "win32-x64-msvc";
+  return null;
+}
+
+function existsNative(triple) {
+  const candidates = [
+    path.join(rustDir, `wreq-js.${triple}.node`),
+    path.join(rustDir, "wreq-js.node"),
+  ];
+  return candidates.find((p) => fs.existsSync(p));
+}
+
+function download(url, dest) {
+  return new Promise((resolve, reject) => {
+    const follow = (u, redirects = 0) => {
+      if (redirects > 5) return reject(new Error("too many redirects"));
+      https
+        .get(u, (res) => {
+          if (
+            res.statusCode >= 300 &&
+            res.statusCode < 400 &&
+            res.headers.location
+          ) {
+            return follow(res.headers.location, redirects + 1);
+          }
+          if (res.statusCode !== 200) {
+            reject(new Error(`HTTP ${res.statusCode} for ${u}`));
+            res.resume();
+            return;
+          }
+          fs.mkdirSync(path.dirname(dest), { recursive: true });
+          const out = createWriteStream(dest);
+          res.pipe(out);
+          out.on("finish", () => out.close(() => resolve(dest)));
+          out.on("error", reject);
+        })
+        .on("error", reject);
+    };
+    follow(url);
+  });
+}
+
+async function main() {
+  // skip in CI when building
+  if (process.env.WREQ_JS_SKIP_POSTINSTALL === "1") {
+    console.log("[wreq-js] postinstall skipped (WREQ_JS_SKIP_POSTINSTALL=1)");
+    return;
+  }
+
+  const triple = platformTriple();
+  if (!triple) {
+    console.warn(
+      `[wreq-js] unsupported platform ${process.platform}/${process.arch}; build from source: npm run build:rust`,
+    );
+    return;
+  }
+
+  const existing = existsNative(triple);
+  if (existing) {
+    console.log(`[wreq-js] native ok: ${path.relative(root, existing)}`);
+    return;
+  }
+
+  const dest = path.join(rustDir, `wreq-js.${triple}.node`);
+  const tag = process.env.WREQ_JS_RELEASE_TAG || "latest";
+  const asset = `wreq-js.${triple}.node`;
+  const url =
+    tag === "latest"
+      ? `https://github.com/alice-wreq/wreq-js/releases/latest/download/${asset}`
+      : `https://github.com/alice-wreq/wreq-js/releases/download/${tag}/${asset}`;
+
+  console.log(`[wreq-js] downloading ${asset} (${tag})…`);
+  try {
+    await download(url, dest);
+    fs.chmodSync(dest, 0o755);
+    console.log(`[wreq-js] installed ${path.relative(root, dest)}`);
+  } catch (e) {
+    console.warn(
+      `[wreq-js] download failed: ${e instanceof Error ? e.message : e}`,
+    );
+    console.warn(
+      "[wreq-js] build from source (requires Rust + napi):\n  npm run build:rust",
+    );
+  }
+}
+
+main().catch((e) => {
+  console.warn("[wreq-js] postinstall error:", e);
+  // do not fail install
+  process.exit(0);
+});

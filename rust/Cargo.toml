@@ -1,0 +1,66 @@
+[package]
+name = "wreq-js"
+version = "2.3.1"
+edition = "2024"
+license = "MIT"
+authors = ["Oleksandr Herasymov", "will-work-for-meal"]
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+# HTTP client with browser impersonation
+# bumped for naver-wtm: upstream wreq latest (rc.29 needs explicit tokio-rt when default-features=false)
+# Engine: alice-wreq/wreq-rust (fork of 0x676e67/wreq). Branch main tracks our fork.
+# Pin rev in CI release builds for reproducibility; branch=main for rolling.
+wreq = { git = "https://github.com/alice-wreq/wreq-rust", branch = "main", default-features = true, features = ["cookies", "gzip", "brotli", "deflate", "zstd", "charset", "system-proxy", "socks", "ws", "stream"] }
+# Profiles (incl. safari_ios_26.6 peet) — vendored under this repo
+wreq-util = { path = "../vendor/wreq-util", features = ["emulation", "emulation-serde", "tokio-rt"] }
+webpki-root-certs = "1.0.8"
+
+# WebSocket support
+futures-util = "0.3.32"
+
+# Byte buffers for streaming bodies
+bytes = "1.12.1"
+
+# Neon for Node.js bindings
+neon = { version = "1.1.1", default-features = false, features = ["napi-6"] }
+
+# Concurrent maps
+dashmap = "6.2.1"
+
+# Serialization
+serde = { version = "1.0.228", features = ["derive"] }
+serde_json = "1.0.150"
+
+# Error handling
+anyhow = "1.0.103"
+
+# Async runtime
+tokio = { version = "1.52.4", features = ["rt-multi-thread", "sync", "macros"] }
+tokio-util = "0.7.18"
+
+# Global state management
+moka = { version = "0.12.15", features = ["sync"] }
+uuid = { version = "1.23.4", features = ["v4"] }
+
+[build-dependencies]
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.151"
+strum = "0.27.2"
+wreq-util = { path = "../vendor/wreq-util", features = ["emulation", "emulation-serde", "tokio-rt"] }
+
+# rc.29 uses btls; boring2 conflicts (links=boringssl). Drop for rc.29 bump.
+# [dev-dependencies]
+# boring2 = "5.0.0-alpha.13"
+
+[profile.release]
+opt-level = 3
+lto = false
+codegen-units = 1
+debug = false
+
+# Force vendor wreq-util (crates.io dep) to use our wreq-rust fork — avoid dual wreq copies
+[patch.crates-io]
+wreq = { git = "https://github.com/alice-wreq/wreq-rust", branch = "main" }
