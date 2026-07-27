@@ -31,11 +31,24 @@ function platformTriple() {
 }
 
 function existsNative(triple) {
-  const candidates = [
-    path.join(rustDir, `wreq-js.${triple}.node`),
-    path.join(rustDir, "wreq-js.node"),
-  ];
-  return candidates.find((p) => fs.existsSync(p));
+  // Prefer platform-specific name. Generic wreq-js.node is only accepted when
+  // no other platform files exist (avoid darwin .node masking linux installs).
+  const specific = path.join(rustDir, `wreq-js.${triple}.node`);
+  if (fs.existsSync(specific)) return specific;
+  const generic = path.join(rustDir, "wreq-js.node");
+  if (!fs.existsSync(generic)) return undefined;
+  try {
+    const others = fs
+      .readdirSync(rustDir)
+      .filter((n) => /^wreq-js\..+\.node$/.test(n));
+    // foreign platform binaries present → do not treat generic as ok
+    if (others.length > 0 && !others.includes(`wreq-js.${triple}.node`)) {
+      return undefined;
+    }
+  } catch {
+    /* */
+  }
+  return generic;
 }
 
 function download(url, dest) {

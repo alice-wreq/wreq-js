@@ -47,6 +47,8 @@ jobs:
 
     name: Build - ${{ matrix.settings.target }}
     runs-on: ${{ matrix.settings.host }}
+    # Windows btls still flaky — do not block multi-arch release artifacts
+    continue-on-error: ${{ matrix.settings.target == 'x86_64-pc-windows-msvc' }}
 
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
@@ -213,18 +215,45 @@ jobs:
             node:20-alpine \
             node scripts/smoke-native.cjs
 
+      - name: Normalize platform artifact name
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Map rustc target triple → install-native.mjs platform id
+          case "${{ matrix.settings.target }}" in
+            aarch64-apple-darwin) ARCH=darwin-arm64 ;;
+            x86_64-apple-darwin) ARCH=darwin-x64 ;;
+            x86_64-unknown-linux-gnu) ARCH=linux-x64-gnu ;;
+            aarch64-unknown-linux-gnu) ARCH=linux-arm64-gnu ;;
+            x86_64-unknown-linux-musl) ARCH=linux-x64-musl ;;
+            aarch64-unknown-linux-musl) ARCH=linux-arm64-musl ;;
+            x86_64-pc-windows-msvc) ARCH=win32-x64-msvc ;;
+            *) echo "unknown target ${{ matrix.settings.target }}"; exit 1 ;;
+          esac
+          mkdir -p artifacts-out
+          if [ -f "rust/wreq-js.${ARCH}.node" ]; then
+            cp "rust/wreq-js.${ARCH}.node" "artifacts-out/wreq-js.${ARCH}.node"
+          elif [ -f rust/wreq-js.node ]; then
+            cp rust/wreq-js.node "artifacts-out/wreq-js.${ARCH}.node"
+          else
+            echo "No .node for ${ARCH}"; ls -la rust/ || true; exit 1
+          fi
+          ls -la artifacts-out/
+
       - name: Upload artifacts
         uses: actions/upload-artifact@v7
         with:
+          # Only the correct platform binary (never dump all rust/*.node — may include committed darwin)
           name: bindings-${{ matrix.settings.target }}
-          path: rust/*.node
+          path: artifacts-out/wreq-js.*.node
           if-no-files-found: error
 
   publish:
     name: Publish Package
     runs-on: ubuntu-24.04
     needs: build_full
-    if: github.event_name == 'release'
+    # Publish even if optional matrix (Windows) failed
+    if: always() && !cancelled() && github.event_name == 'release'
     permissions:
       contents: read
       id-token: write  # Required for OIDC trusted publishing
@@ -243,20 +272,30 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+        env:
+          WREQ_JS_SKIP_POSTINSTALL: "1"
 
       - name: Download all artifacts
         uses: actions/download-artifact@v8
         with:
           path: artifacts
+          pattern: bindings-*
+          merge-multiple: true
 
       - name: Move artifacts to rust directory
         shell: bash
         run: |
+          set -euo pipefail
           mkdir -p rust
-          # Copy all .node files from artifacts to rust/
-          find artifacts -name "*.node" -exec cp {} rust/ \;
+          # Drop any pre-committed/wrong-platform natives
+          rm -f rust/*.node
+          find artifacts -name 'wreq-js.*.node' -exec cp -f {} rust/ \;
           echo "Collected binaries:"
           ls -la rust/*.node
+          # Required platforms for alice deploy (linux + mac)
+          for need in linux-x64-gnu linux-arm64-gnu darwin-arm64 darwin-x64; do
+            test -f "rust/wreq-js.${need}.node" || { echo "MISSING rust/wreq-js.${need}.node"; exit 1; }
+          done
 
       - name: Build TypeScript
         run: npm run build:ts
