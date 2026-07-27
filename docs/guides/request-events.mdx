@@ -16,7 +16,7 @@ Use this when you need to:
 ## Enable request events
 
 ```typescript
-import { fetch } from 'wreq-js';
+import { fetch } from '@alice-doctor/wreq-js';
 
 const response = await fetch('https://example.com/file.zip', {
   browser: 'chrome_142',
@@ -102,7 +102,7 @@ When available, `response.diagnostics` may include:
 You can enable diagnostics by default on a session or transport:
 
 ```typescript
-import { createSession, createTransport } from 'wreq-js';
+import { createSession, createTransport } from '@alice-doctor/wreq-js';
 
 const session = await createSession({
   browser: 'chrome_142',

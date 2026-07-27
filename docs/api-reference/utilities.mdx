@@ -20,7 +20,7 @@ Array of profile names that can be used with the `browser` option.
 ### Example
 
 ```typescript
-import { getProfiles } from 'wreq-js';
+import { getProfiles } from '@alice-doctor/wreq-js';
 
 const profiles = getProfiles();
 console.log(profiles);
@@ -30,7 +30,7 @@ console.log(profiles);
 ### Using a random profile
 
 ```typescript
-import { fetch, getProfiles } from 'wreq-js';
+import { fetch, getProfiles } from '@alice-doctor/wreq-js';
 
 const profiles = getProfiles();
 const randomProfile = profiles[Math.floor(Math.random() * profiles.length)];
@@ -59,7 +59,7 @@ Array of OS names that can be used with the `os` option.
 ### Example
 
 ```typescript
-import { getOperatingSystems } from 'wreq-js';
+import { getOperatingSystems } from '@alice-doctor/wreq-js';
 
 const systems = getOperatingSystems();
 console.log(systems);
@@ -69,7 +69,7 @@ console.log(systems);
 ### Combining browser and OS
 
 ```typescript
-import { fetch, getProfiles, getOperatingSystems } from 'wreq-js';
+import { fetch, getProfiles, getOperatingSystems } from '@alice-doctor/wreq-js';
 
 // Chrome on Windows
 const response = await fetch('https://example.com', {
@@ -112,7 +112,7 @@ declare class Headers {
 ### Example
 
 ```typescript
-import { fetch, Headers } from 'wreq-js';
+import { fetch, Headers } from '@alice-doctor/wreq-js';
 
 const headers = new Headers();
 headers.set('Authorization', 'Bearer token');

@@ -19,7 +19,7 @@ The `emulation` option is accepted by `fetch()`, `createSession()`, `createTrans
 ### Preset only (browser + OS)
 
 ```typescript
-import { fetch } from "wreq-js";
+import { fetch } from "@alice-doctor/wreq-js";
 
 const response = await fetch("https://example.com", {
   browser: "chrome_145",
@@ -32,7 +32,7 @@ const response = await fetch("https://example.com", {
 Start from a real browser profile, then override specific TLS or HTTP/2 settings, or add extra headers:
 
 ```typescript
-import { fetch, createSession, createTransport } from "wreq-js";
+import { fetch, createSession, createTransport } from "@alice-doctor/wreq-js";
 
 // With fetch()
 const response = await fetch("https://example.com", {
@@ -77,7 +77,7 @@ const response2 = await fetch("https://example.com", { transport });
 No browser or OS is set. You control the entire fingerprint:
 
 ```typescript
-import { fetch, createSession, createTransport } from "wreq-js";
+import { fetch, createSession, createTransport } from "@alice-doctor/wreq-js";
 
 // With fetch()
 const response = await fetch("https://example.com", {
@@ -314,7 +314,7 @@ type AlpsProtocol = "HTTP1" | "HTTP2" | "HTTP3";
 Chrome 145 uses permuted TLS extensions, ALPS with the new codepoint, ECH GREASE, and the post-quantum `X25519MLKEM768` key exchange. It disables RFC 7540 priorities in favor of RFC 9218.
 
 ```typescript
-import { fetch } from "wreq-js";
+import { fetch } from "@alice-doctor/wreq-js";
 
 const response = await fetch("https://example.com", {
   emulation: {
@@ -408,7 +408,7 @@ const response = await fetch("https://example.com", {
 Firefox 146 uses a fixed extension permutation (deterministic order), delegated credentials, and keeps RFC 7540 priorities enabled. It advertises `zlib` for certificate compression alongside `brotli`.
 
 ```typescript
-import { fetch } from "wreq-js";
+import { fetch } from "@alice-doctor/wreq-js";
 
 const response = await fetch("https://example.com", {
   emulation: {

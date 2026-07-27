@@ -9,18 +9,40 @@ Node/TypeScript HTTP client (NAPI) for browser TLS impersonation.
 
 ## Install (app)
 
-```bash
-# package.json
-"wreq-js": "github:alice-wreq/wreq-js#main"
+**Published npm name: `@alice-doctor/wreq-js`** (not bare `wreq-js`).
 
-# or pin a tag
-"wreq-js": "github:alice-wreq/wreq-js#v2.3.1-alice.1"
+```bash
+npm install @alice-doctor/wreq-js
+# or
+bun add @alice-doctor/wreq-js
+```
+
+```json
+{
+  "dependencies": {
+    "@alice-doctor/wreq-js": "^2.3.3"
+  }
+}
+```
+
+```ts
+import { fetch, getProfiles } from "@alice-doctor/wreq-js";
+```
+
+Git dependency (optional):
+
+```json
+{
+  "dependencies": {
+    "@alice-doctor/wreq-js": "github:alice-wreq/wreq-js#v2.3.3"
+  }
+}
 ```
 
 ```bash
 bun install
-# postinstall: uses committed rust/wreq-js.<platform>.node
-# or downloads from GitHub Releases if missing
+# postinstall: downloads platform native from GitHub Releases if missing
+# e.g. wreq-js.linux-x64-gnu.node / linux-arm64-gnu.node
 ```
 
 ## Develop
@@ -66,7 +88,7 @@ npm publish --access public
 App:
 
 ```json
-"@alice-doctor/wreq-js": "^2.3.1-alice.1"
+"@alice-doctor/wreq-js": "^2.3.3"
 ```
 
 ```ts

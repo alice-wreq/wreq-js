@@ -66,7 +66,7 @@ function createTransport(options?: CreateTransportOptions): Promise<Transport>
 Pass the transport via `RequestInit.transport`.
 
 ```typescript
-import { createTransport, fetch } from "wreq-js";
+import { createTransport, fetch } from "@alice-doctor/wreq-js";
 
 const transport = await createTransport({
   proxy: "http://user:pass@proxy.example.com:8080",
@@ -97,7 +97,7 @@ When you provide `transport`, you must not also set `browser`, `os`, `proxy`, or
 Create **one transport per proxy**, reuse it for all requests that should go through that proxy, and close transports when you no longer need them.
 
 ```typescript
-import { createTransport, fetch, type Transport } from "wreq-js";
+import { createTransport, fetch, type Transport } from "@alice-doctor/wreq-js";
 
 const transports = new Map<string, Transport>();
 

@@ -168,7 +168,7 @@ await session.close();
 ### Example
 
 ```typescript
-import { createSession } from 'wreq-js';
+import { createSession } from '@alice-doctor/wreq-js';
 
 const session = await createSession({
   browser: 'chrome_142',
@@ -207,7 +207,7 @@ function withSession<T>(
 ### Example
 
 ```typescript
-import { withSession } from 'wreq-js';
+import { withSession } from '@alice-doctor/wreq-js';
 
 const result = await withSession(async (session) => {
   await session.fetch('https://example.com/login', {

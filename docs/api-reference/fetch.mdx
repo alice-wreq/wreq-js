@@ -125,7 +125,7 @@ For a full worked example, see [/guides/request-events](/guides/request-events).
 ## Convenience helpers
 
 ```typescript
-import { get, post, request } from 'wreq-js';
+import { get, post, request } from '@alice-doctor/wreq-js';
 ```
 
 - `get(url, init?)` calls `fetch(url, { ...init, method: "GET" })`.
@@ -137,7 +137,7 @@ import { get, post, request } from 'wreq-js';
 ### Basic GET request
 
 ```typescript
-import { fetch } from 'wreq-js';
+import { fetch } from '@alice-doctor/wreq-js';
 
 const response = await fetch('https://api.example.com/data', {
   browser: 'chrome_142',
@@ -215,7 +215,7 @@ try {
 ### Reuse connections via Transport
 
 ```typescript
-import { createTransport, fetch } from "wreq-js";
+import { createTransport, fetch } from "@alice-doctor/wreq-js";
 
 const transport = await createTransport({ proxy: "http://proxy.example.com:8080" });
 

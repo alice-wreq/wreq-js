@@ -1,10 +1,12 @@
-# wreq-js
+# @alice-doctor/wreq-js
 
-[![npm](https://img.shields.io/npm/v/wreq-js.svg)](https://www.npmjs.com/package/wreq-js)
-[![CI](https://github.com/sqdshguy/wreq-js/actions/workflows/test.yml/badge.svg)](https://github.com/sqdshguy/wreq-js/actions/workflows/test.yml)
-[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/sqdshguy/wreq-js)
+[![npm](https://img.shields.io/npm/v/@alice-doctor/wreq-js.svg)](https://www.npmjs.com/package/@alice-doctor/wreq-js)
+[![CI](https://github.com/alice-wreq/wreq-js/actions/workflows/build-release.yml/badge.svg)](https://github.com/alice-wreq/wreq-js/actions)
+[![GitHub](https://img.shields.io/badge/github-alice--wreq%2Fwreq--js-blue)](https://github.com/alice-wreq/wreq-js)
 
-`wreq-js` is a Node.js and TypeScript HTTP client that helps you bypass TLS fingerprinting checks used by services like Cloudflare and DataDome, powered by native Rust bindings from [wreq](https://github.com/0x676e67/wreq).
+**npm package name: `@alice-doctor/wreq-js`** (not the upstream `wreq-js`).
+
+alice-wreq fork of Node.js/TypeScript HTTP client for TLS fingerprinting (Cloudflare / DataDome 등), powered by native Rust bindings from [alice-wreq/wreq-rust](https://github.com/alice-wreq/wreq-rust) (upstream [wreq](https://github.com/0x676e67/wreq)).
 
 If your requests work in a browser but get blocked from Node.js because your network fingerprint looks wrong, this is for you.
 You keep a fetch style API and get browser profile level network behavior without running a full browser.
@@ -22,7 +24,7 @@ Common search terms: cloudflare bypass, datadome bypass, tls fingerprinting, ja3
 
 | Library | Approach | API | Notes |
 |---------|----------|-----|-------|
-| **wreq-js** | Rust native bindings ([wreq](https://github.com/0x676e67/wreq)) | Fetch style, TypeScript first | Profile labels and network behavior come from the native layer |
+| **@alice-doctor/wreq-js** | Rust native ([alice-wreq/wreq-rust](https://github.com/alice-wreq/wreq-rust)) | Fetch style, TypeScript first | alice profiles (e.g. `chrome_150`, `safari_ios_26.6`) |
 | [CycleTLS](https://github.com/Danny-Dasilva/CycleTLS) | Go subprocess bridge | Promise based | Subprocess model |
 | [got-scraping](https://github.com/apify/got-scraping) | JavaScript HTTP client customization | `got` based | Header and request customization |
 | [node-tls-client](https://github.com/Sahil1337/node-tls-client) | Native shared library bindings | Custom | Behavior depends on upstream native layer |
@@ -46,28 +48,45 @@ Quick links:
 ## Installation
 
 ```bash
-npm install wreq-js
+npm install @alice-doctor/wreq-js
 # or
-yarn add wreq-js
-pnpm add wreq-js
-bun add wreq-js
+yarn add @alice-doctor/wreq-js
+pnpm add @alice-doctor/wreq-js
+bun add @alice-doctor/wreq-js
 ```
 
-Current configured native target matrix in `package.json` includes:
-1. macOS (Intel and Apple Silicon)
-2. Linux (x64 glibc and musl, arm64 glibc and musl)
-3. Windows (x64)
+> **Do not** `npm install @alice-doctor/wreq-js` for this fork — that installs the **upstream** package without alice profiles / natives.
+> Always use the scoped name: **`@alice-doctor/wreq-js`**.
 
-If a matching prebuilt artifact is unavailable for your environment, installation may build from source (requires a Rust toolchain).
+```json
+{
+  "dependencies": {
+    "@alice-doctor/wreq-js": "^2.3.3"
+  }
+}
+```
+
+```ts
+import { fetch, getProfiles } from "@alice-doctor/wreq-js";
+```
+
+Prebuilt natives (GitHub Releases / postinstall):
+1. macOS — `darwin-arm64`, `darwin-x64`
+2. Linux — `linux-x64-gnu`, `linux-arm64-gnu`, `linux-x64-musl`, `linux-arm64-musl`
+3. Windows — when published
+
+If a matching prebuilt is missing, postinstall tries [GitHub Releases](https://github.com/alice-wreq/wreq-js/releases); otherwise build from source (Rust + cmake).
+
+See also [ALICE_WREQ.md](./ALICE_WREQ.md).
 
 ## Quick start
 
 ```ts
-import { fetch } from 'wreq-js';
+import { fetch } from "@alice-doctor/wreq-js";
 
-const res = await fetch('https://example.com/api', {
-  browser: 'chrome_142',
-  os: 'windows',
+const res = await fetch("https://example.com/api", {
+  browser: "chrome_150",
+  os: "macos",
 });
 
 console.log(await res.json());
@@ -82,7 +101,7 @@ For **most real-world workloads**, start with a session and reuse it across requ
 This keeps one cookie and request context for multi step flows.
 
 ```ts
-import { createSession } from 'wreq-js';
+import { createSession } from '@alice-doctor/wreq-js';
 
 const session = await createSession({ browser: 'chrome_142', os: 'windows' });
 
@@ -102,7 +121,7 @@ More session patterns: https://wreq.sqdsh.win
 Use the helper for a connected socket from one `await`.
 
 ```ts
-import { websocket } from 'wreq-js';
+import { websocket } from '@alice-doctor/wreq-js';
 
 const ws = await websocket('wss://example.com/ws', {
   browser: 'chrome_142',
@@ -122,7 +141,7 @@ ws.close(1000, 'done');
 Use the constructor when you want browser like `CONNECTING` behavior.
 
 ```ts
-import { WebSocket } from 'wreq-js';
+import { WebSocket } from '@alice-doctor/wreq-js';
 
 const ws = new WebSocket('wss://example.com/ws', {
   browser: 'chrome_142',
@@ -137,7 +156,7 @@ ws.onopen = () => {
 Use `session.websocket(...)` to reuse cookies and transport settings from session HTTP calls.
 
 ```ts
-import { createSession } from 'wreq-js';
+import { createSession } from '@alice-doctor/wreq-js';
 
 const session = await createSession({ browser: 'chrome_142' });
 

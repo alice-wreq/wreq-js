@@ -18,7 +18,7 @@ For multi-step flows (like login sequences), use **sessions** to persist state.
 ## Creating a session
 
 ```typescript
-import { createSession } from 'wreq-js';
+import { createSession } from '@alice-doctor/wreq-js';
 
 const session = await createSession({ browser: 'chrome_142' });
 
@@ -41,7 +41,7 @@ await session.close();
 Use `withSession()` to automatically close the session when done:
 
 ```typescript
-import { withSession } from 'wreq-js';
+import { withSession } from '@alice-doctor/wreq-js';
 
 await withSession(async (session) => {
   await session.fetch('https://example.com/login', {

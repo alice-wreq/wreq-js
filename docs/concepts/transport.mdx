@@ -28,7 +28,7 @@ Use the simplest tool that matches your needs:
 A common pattern is **one transport per proxy**, reused across many requests:
 
 ```typescript
-import { createTransport, fetch } from 'wreq-js';
+import { createTransport, fetch } from '@alice-doctor/wreq-js';
 
 const transport = await createTransport({
   proxy: 'http://user:pass@proxy.example.com:8080',
@@ -50,7 +50,7 @@ try {
 Sessions are the right default for cookie-based flows. If you want **multiple sessions** (separate cookies) to share a **single transport context** (same proxy/emulation), pass the same transport per request:
 
 ```typescript
-import { createSession, createTransport } from 'wreq-js';
+import { createSession, createTransport } from '@alice-doctor/wreq-js';
 
 const transport = await createTransport({
   proxy: 'http://proxy.example.com:8080',

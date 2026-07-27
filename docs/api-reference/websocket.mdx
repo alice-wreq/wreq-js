@@ -101,7 +101,7 @@ For authenticated socket flows, use [`createSession()`](/api-reference/sessions)
 Within a session, WebSocket uses the same session context and transport settings.
 
 ```typescript
-import { createSession } from 'wreq-js';
+import { createSession } from '@alice-doctor/wreq-js';
 
 const session = await createSession({ browser: 'chrome_142' });
 
@@ -122,7 +122,7 @@ ws.onmessage = (event) => {
 ### Helper style
 
 ```typescript
-import { websocket } from 'wreq-js';
+import { websocket } from '@alice-doctor/wreq-js';
 
 const ws = await websocket('wss://example.com/socket', {
   browser: 'chrome_142',
@@ -139,7 +139,7 @@ void ws.send('hello');
 ### Constructor style
 
 ```typescript
-import { WebSocket } from 'wreq-js';
+import { WebSocket } from '@alice-doctor/wreq-js';
 
 const ws = new WebSocket('wss://example.com/socket', {
   browser: 'firefox_139',

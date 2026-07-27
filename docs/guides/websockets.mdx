@@ -10,7 +10,7 @@ wreq-js supports both a convenience helper and a constructor-style API.
 Use `websocket(url, options)` when you want a connected socket from a single `await`.
 
 ```typescript
-import { websocket } from 'wreq-js';
+import { websocket } from '@alice-doctor/wreq-js';
 
 const ws = await websocket('wss://example.com/socket', {
   browser: 'chrome_142',
@@ -32,7 +32,7 @@ ws.close();
 Use `new WebSocket(...)` when you want browser-like shape with `CONNECTING` state.
 
 ```typescript
-import { WebSocket } from 'wreq-js';
+import { WebSocket } from '@alice-doctor/wreq-js';
 
 const ws = new WebSocket('wss://example.com/socket', {
   browser: 'chrome_142',
@@ -59,7 +59,7 @@ For authenticated flows, create a session, log in with HTTP, then open the WebSo
 `session.websocket(...)` reuses the session transport and context.
 
 ```typescript
-import { createSession } from 'wreq-js';
+import { createSession } from '@alice-doctor/wreq-js';
 
 const session = await createSession({
   browser: 'chrome_142',
