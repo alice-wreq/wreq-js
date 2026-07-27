@@ -19,8 +19,7 @@ jobs:
         include:
           - os: macos-14
             triple: darwin-arm64
-          - os: macos-13
-            triple: darwin-x64
+          # macos-13 (darwin-x64) excluded: runner/build unreliable
           - os: ubuntu-22.04
             triple: linux-x64-gnu
           - os: ubuntu-22.04-arm
