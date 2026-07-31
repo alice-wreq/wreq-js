@@ -271,7 +271,7 @@ fn apply_payload(
 
     if let Some(headers) = payload.headers {
         if overlay_on_preset {
-            merge_header_map(&mut emulation.headers , headers)?;
+            merge_header_map(&mut emulation.headers, headers)?;
         } else {
             emulation.headers = build_header_map(headers)?;
         }
