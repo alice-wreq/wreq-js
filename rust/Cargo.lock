@@ -1771,7 +1771,7 @@ checksum = "1ebf944e87a7c253233ad6766e082e3cd714b5d03812acc24c318f549614536e"
 [[package]]
 name = "wreq"
 version = "6.0.0-rc.29"
-source = "git+https://github.com/alice-wreq/wreq-rust?branch=main#873f1376aceadfe0207d6bda172f4ecd998b2351"
+source = "git+https://github.com/alice-wreq/wreq-rust?branch=main#78a2d08faca3801d581e49a0e0973f5ba319bfb3"
 dependencies = [
  "btls",
  "btls-sys",
