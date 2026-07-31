@@ -126,7 +126,7 @@ pub async fn connect_websocket(
     WebSocketUpgradeMetadata,
 )> {
     // Build client with emulation and proxy
-    let mut emulation = resolve_emulation(
+    let emulation = resolve_emulation(
         options.browser,
         options.browser_os,
         options.emulation_json.as_deref(),

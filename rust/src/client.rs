@@ -789,7 +789,7 @@ async fn make_request_inner(
 
 /// Build a client for explicit transports (full pooling config).
 fn build_client(config: &TransportConfig) -> Result<ResolvedClient> {
-    let mut emulation = resolve_emulation(
+    let emulation = resolve_emulation(
         config.browser,
         config.browser_os,
         config.emulation_json.as_deref(),
@@ -844,7 +844,7 @@ fn build_client(config: &TransportConfig) -> Result<ResolvedClient> {
 
 /// Build a client for ephemeral (stateless) requests - no connection pooling.
 fn build_ephemeral_client(config: &SessionConfig) -> Result<ResolvedClient> {
-    let mut emulation = resolve_emulation(
+    let emulation = resolve_emulation(
         config.browser,
         config.browser_os,
         config.emulation_json.as_deref(),

@@ -1,13 +1,13 @@
-use anyhow::{Context, Result, anyhow, bail};
+use anyhow::{Context, Result, bail};
 use serde::Deserialize;
 use std::collections::HashSet;
 use std::time::Duration;
 use wreq::{
-    Emulation as WreqEmulation, Group, IntoEmulation,
+    Emulation as WreqEmulation, IntoEmulation,
     header::{HeaderMap, HeaderName, HeaderValue, OrigHeaderMap},
     http1::Http1Options,
     http2::{
-        Http2Options, Priorities, Priority, PseudoId, PseudoOrder, Setting,
+        Http2Options, Priorities, Priority, PseudoId, PseudoOrder,
         SettingId, SettingsOrder, StreamDependency, StreamId,
     },
     tls::{
@@ -271,7 +271,7 @@ fn apply_payload(
 
     if let Some(headers) = payload.headers {
         if overlay_on_preset {
-            merge_header_map((&mut emulation.headers), headers)?;
+            merge_header_map(&mut emulation.headers , headers)?;
         } else {
             emulation.headers = build_header_map(headers)?;
         }
