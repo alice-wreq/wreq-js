@@ -10,6 +10,7 @@ on:
 
 permissions:
   contents: write
+  id-token: write # npm trusted publishing (OIDC)
 
 jobs:
   build:
@@ -151,3 +152,58 @@ jobs:
           fail_on_unmatched_files: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # GITHUB_TOKEN-created Releases do not trigger other workflows' `on: release`.
+  # Publish npm in this same workflow on version tags so it always runs.
+  npm-publish:
+    name: Publish npm package
+    needs: [build, release]
+    # Only version tags (v3.0.0) — not every main push prerelease build-*
+    if: >
+      always() && !cancelled() &&
+      needs.release.result == 'success' &&
+      (
+        (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')) ||
+        (github.event_name == 'workflow_dispatch' && startsWith(github.ref, 'refs/tags/v'))
+      )
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Ensure npm for trusted publishing
+        run: npm install -g npm@latest
+
+      - name: Install deps
+        run: npm ci || npm install
+        env:
+          WREQ_JS_SKIP_POSTINSTALL: "1"
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          pattern: node-*
+          merge-multiple: true
+
+      - name: Stage natives + build TS
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p rust
+          rm -f rust/*.node
+          find artifacts -name 'wreq-js.*.node' -exec cp -f {} rust/ \;
+          ls -la rust/*.node
+          # Core platforms for alice (darwin-x64 optional — not in this matrix)
+          test -f rust/wreq-js.linux-x64-gnu.node
+          test -f rust/wreq-js.darwin-arm64.node
+          npm run build:ts
+
+      - name: Publish to npm
+        run: npm publish --provenance --access public

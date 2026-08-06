@@ -3,6 +3,8 @@ name: 🏗️ Build and Publish Package
 on:
   release:
     types: [published]
+  # Backup path if a human publishes a GitHub Release from the UI
+  # (softprops + GITHUB_TOKEN does not re-trigger this workflow)
   workflow_dispatch:
 
 concurrency:

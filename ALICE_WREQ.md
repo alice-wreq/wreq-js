@@ -88,20 +88,39 @@ wreq-util = { path = "../vendor/wreq-util", ... }
 EOF
 ## npm publish (`@alice-doctor/wreq-js`)
 
-```bash
-# 1) https://www.npmjs.com/org/create  → organization: alice-wreq
-# 2) npm login
-npm login
+### Automatic (preferred)
 
-# 3) from this repo (after build)
-npm run build
+1. Bump `package.json` / `rust/Cargo.toml` version  
+2. Commit, push `main`, then tag and push:
+
+```bash
+git tag -a v3.0.1 -m "v3.0.1"
+git push origin v3.0.1
+```
+
+3. Workflow **`build-and-release`**:
+   - builds platform natives  
+   - uploads GitHub Release assets  
+   - **`npm publish`** on tags matching `v*` (OIDC trusted publishing)
+
+`main` push without a version tag only creates a prerelease `build-<sha>` (no npm).
+
+### Manual fallback
+
+```bash
+npm login
+gh release download vX.Y.Z -R alice-wreq/wreq-js -D rust --pattern 'wreq-js.*.node'
+npm run build:ts
 npm publish --access public
 ```
+
+npm Trusted Publishing must allow this repo’s GitHub Actions for `@alice-doctor/wreq-js`  
+(https://www.npmjs.com/package/@alice-doctor/wreq-js → Settings → Publishing access).
 
 App:
 
 ```json
-"@alice-doctor/wreq-js": "^2.3.3"
+"@alice-doctor/wreq-js": "^3.0.0"
 ```
 
 ```ts
