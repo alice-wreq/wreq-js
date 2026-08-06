@@ -1,8 +1,9 @@
-// Import and re-export the auto-generated BrowserProfile and EmulationOS types
-import type { BrowserProfile, EmulationOS } from "./generated-types.js";
+// Import and re-export the auto-generated BrowserProfile, BrowserAlias, and EmulationOS types
+import type { BrowserAlias, BrowserProfile, EmulationOS } from "./generated-types.js";
 import type { Session, Transport, WebSocket } from "./wreq-js.js";
 
-export type { BrowserProfile, EmulationOS };
+export type { BrowserAlias, BrowserProfile, EmulationOS };
+export { BROWSER_ALIASES } from "./generated-types.js";
 
 /**
  * Controls how cookies are scoped for a request.
@@ -70,6 +71,15 @@ export type TlsVersion = "1.0" | "1.1" | "1.2" | "1.3" | "TLS1.0" | "TLS1.1" | "
 
 export type Http2PseudoHeaderId = "Method" | "Scheme" | "Authority" | "Path" | "Protocol";
 export type TrustStoreMode = "combined" | "mozilla" | "defaultPaths";
+
+/**
+ * Overrides DNS resolution for specific hosts.
+ *
+ * Each key is a hostname and each value is one address, or an array of fallback addresses,
+ * written as `ip` or `ip:port`. Following reqwest/wreq semantics the port is optional and ignored;
+ * the request URL's port is always used.
+ */
+export type ResolveMap = Record<string, string | string[]>;
 
 export type Http2SettingId =
   | "HeaderTableSize"
@@ -190,7 +200,17 @@ export interface CustomEmulationOptions {
  * const body: BodyInit = new FormData();
  * ```
  */
-export type BodyInit = string | ArrayBuffer | ArrayBufferView | URLSearchParams | Buffer | Blob | FormData;
+export type BodyInit =
+  | string
+  | ArrayBuffer
+  | ArrayBufferView
+  | URLSearchParams
+  | Buffer
+  | Blob
+  | FormData
+  | ReadableStream<Uint8Array>
+  | AsyncIterable<Uint8Array>
+  | Iterable<Uint8Array>;
 
 /**
  * Details about why a WebSocket connection closed.
@@ -329,9 +349,12 @@ export interface RequestInit {
    * Browser profile to impersonate for this request.
    * Applies browser profile behavior handled by the native layer.
    * Ignored when `transport` is provided.
-   * @default 'chrome_142'
+   *
+   * Accepts a concrete profile ('firefox_149') or a family alias ('firefox'),
+   * which resolves to the newest profile in that family.
+   * @default 'chrome'
    */
-  browser?: BrowserProfile;
+  browser?: BrowserProfile | BrowserAlias;
 
   /**
    * Operating system to emulate for this request.
@@ -454,9 +477,12 @@ export interface CreateSessionOptions {
   defaultHeaders?: HeadersInit;
 
   /**
-   * Browser profile to bind to this session. Defaults to 'chrome_142'.
+   * Browser profile to bind to this session. Defaults to 'chrome'.
+   *
+   * Accepts a concrete profile ('firefox_149') or a family alias ('firefox'),
+   * which resolves to the newest profile in that family.
    */
-  browser?: BrowserProfile;
+  browser?: BrowserProfile | BrowserAlias;
 
   /**
    * Operating system to bind to this session. Defaults to 'macos'.
@@ -515,8 +541,11 @@ export interface CreateTransportOptions {
 
   /**
    * Browser profile to impersonate for this transport.
+   *
+   * Accepts a concrete profile ('firefox_149') or a family alias ('firefox'),
+   * which resolves to the newest profile in that family.
    */
-  browser?: BrowserProfile;
+  browser?: BrowserProfile | BrowserAlias;
 
   /**
    * Operating system to emulate for this transport.
@@ -538,6 +567,11 @@ export interface CreateTransportOptions {
    * @default "combined"
    */
   trustStore?: TrustStoreMode;
+
+  /**
+   * Override DNS resolution for specific hosts. See {@link ResolveMap}.
+   */
+  resolve?: ResolveMap;
 
   /**
    * Idle timeout for pooled connections (ms).
@@ -600,9 +634,12 @@ export interface RequestOptions {
   /**
    * Browser profile to impersonate.
    * Applies browser profile behavior handled by the native layer.
-   * @default 'chrome_142'
+   *
+   * Accepts a concrete profile ('firefox_149') or a family alias ('firefox'),
+   * which resolves to the newest profile in that family.
+   * @default 'chrome'
    */
-  browser?: BrowserProfile;
+  browser?: BrowserProfile | BrowserAlias;
 
   /**
    * Operating system to emulate.
@@ -801,9 +838,12 @@ export interface WebSocketOptions {
   /**
    * Browser profile to impersonate for the WebSocket upgrade request.
    * Automatically applies browser-specific headers and TLS fingerprints.
-   * @default 'chrome_142'
+   *
+   * Accepts a concrete profile ('firefox_149') or a family alias ('firefox'),
+   * which resolves to the newest profile in that family.
+   * @default 'chrome'
    */
-  browser?: BrowserProfile;
+  browser?: BrowserProfile | BrowserAlias;
 
   /**
    * Operating system to emulate for the WebSocket handshake.

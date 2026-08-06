@@ -4,7 +4,7 @@ use std::collections::HashSet;
 use std::time::Duration;
 use wreq::{
     Emulation as WreqEmulation, IntoEmulation,
-    header::{HeaderMap, HeaderName, HeaderValue, OrigHeaderMap},
+    header::{HeaderCaseName, HeaderMap, HeaderName, HeaderValue, OrigHeaderMap},
     http1::Http1Options,
     http2::{
         Http2Options, Priorities, Priority, PseudoId, PseudoOrder,
@@ -222,6 +222,42 @@ pub fn resolve_preset_emulation(
     }
 
     Ok(emulation)
+}
+
+/// Read-only view of the headers a preset profile injects into every request,
+/// in the profile's own order and with its original casing.
+pub fn preset_emulation_headers(
+    browser: BrowserEmulation,
+    os: BrowserEmulationOS,
+) -> Result<Vec<(String, String)>> {
+    let emulation = resolve_preset_emulation(browser, os, None)?;
+    let orig_headers = emulation.orig_headers.clone();
+    let mut headers = emulation.headers.clone();
+
+    let mut resolved = Vec::with_capacity(headers.len());
+
+    // `OrigHeaderMap` keeps insertion order and original casing, `HeaderMap` keeps
+    // neither, so drain the ordered names first and let the rest follow.
+    for (name, orig_name) in orig_headers.iter() {
+        for value in headers.get_all(name) {
+            resolved.push((decode_header_name(orig_name), decode_header_value(value)));
+        }
+        headers.remove(name);
+    }
+
+    for (name, value) in headers.iter() {
+        resolved.push((name.as_str().to_owned(), decode_header_value(value)));
+    }
+
+    Ok(resolved)
+}
+
+fn decode_header_name(name: &HeaderCaseName) -> String {
+    String::from_utf8_lossy(name.as_ref()).into_owned()
+}
+
+fn decode_header_value(value: &HeaderValue) -> String {
+    String::from_utf8_lossy(value.as_bytes()).into_owned()
 }
 
 pub fn resolve_custom_emulation(emulation_json: &str) -> Result<WreqEmulation> {

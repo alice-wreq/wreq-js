@@ -4,8 +4,21 @@ Node/TypeScript HTTP client (NAPI) for browser TLS impersonation.
 
 | Layer | Source |
 |-------|--------|
-| **Engine** | [`alice-wreq/wreq-rust`](https://github.com/alice-wreq/wreq-rust) (git dep, `branch = main`) |
+| **Engine** | [`alice-wreq/wreq-rust`](https://github.com/alice-wreq/wreq-rust) / local `Documents/GitHub/wreq-rust` (git dep, `branch = main`) |
 | **Profiles** | `vendor/wreq-util` (includes `safari_ios_26.6` peet-aligned) |
+
+## Upstream v3.0.0 parity (sqdshguy/wreq-js)
+
+Synced JS/NAPI features from upstream **v3.0.0** while keeping alice engine/vendor:
+
+- Browser family aliases (`chrome` → newest, e.g. `chrome_150`) + `resolveProfile()`
+- `getEmulationHeaders()`
+- `resolve` DNS map on `createTransport`
+- Fetch-aligned `BodyInit` (streams / iterables)
+- `engines.node >= 20`, manylinux_2_28 for linux-gnu natives
+- Explicit resource management / `getSetCookie` (already present)
+
+Not taken from upstream: crates.io `wreq`/`wreq-util` (alice git + vendor stay).
 
 ## Install (app)
 

@@ -19,6 +19,7 @@ use neon::types::{
     buffer::TypedArray,
 };
 use std::collections::HashMap;
+use std::net::{IpAddr, SocketAddr};
 use std::sync::Arc;
 use std::sync::LazyLock;
 use tokio::sync::{Semaphore, mpsc};
@@ -679,6 +680,33 @@ fn get_profiles(mut cx: FunctionContext) -> JsResult<JsArray> {
     Ok(js_array)
 }
 
+// Get the headers a browser profile injects, without sending a request
+fn get_emulation_headers(mut cx: FunctionContext) -> JsResult<JsArray> {
+    let browser_str = cx.argument::<JsString>(0)?.value(&mut cx);
+    let os_str = cx.argument::<JsString>(1)?.value(&mut cx);
+
+    let headers = match custom_emulation::preset_emulation_headers(
+        parse_emulation(&browser_str),
+        parse_emulation_os(&os_str),
+    ) {
+        Ok(headers) => headers,
+        Err(err) => return cx.throw_error(format!("{err:#}")),
+    };
+
+    let js_array = JsArray::new(&mut cx, headers.len());
+
+    for (i, (name, value)) in headers.iter().enumerate() {
+        let entry = cx.empty_array();
+        let name_str = cx.string(name);
+        let value_str = cx.string(value);
+        entry.set(&mut cx, 0, name_str)?;
+        entry.set(&mut cx, 1, value_str)?;
+        js_array.set(&mut cx, i as u32, entry)?;
+    }
+
+    Ok(js_array)
+}
+
 // Get list of available operating systems for emulation
 fn get_operating_systems(mut cx: FunctionContext) -> JsResult<JsArray> {
     let js_array = cx.empty_array();
@@ -689,6 +717,81 @@ fn get_operating_systems(mut cx: FunctionContext) -> JsResult<JsArray> {
     }
 
     Ok(js_array)
+}
+
+fn parse_socket_addr(value: &str) -> Option<SocketAddr> {
+    if let Ok(addr) = value.parse::<SocketAddr>() {
+        return Some(addr);
+    }
+
+    // The port is ignored by wreq (the request URL's port is used), so a bare IP
+    // address is accepted and paired with a placeholder port.
+    value
+        .parse::<IpAddr>()
+        .ok()
+        .map(|ip| SocketAddr::new(ip, 0))
+}
+
+fn parse_resolve_from_object(
+    cx: &mut FunctionContext,
+    obj: Handle<JsObject>,
+) -> NeonResult<Vec<(String, Vec<SocketAddr>)>> {
+    let keys = obj.get_own_property_names(cx)?;
+    let keys_vec = keys.to_vec(cx)?;
+    let mut entries = Vec::with_capacity(keys_vec.len());
+
+    for key_val in keys_vec {
+        let Ok(key_str) = key_val.downcast::<JsString, _>(cx) else {
+            continue;
+        };
+        let host = key_str.value(cx);
+        let value: Handle<JsValue> = obj.get(cx, host.as_str())?;
+
+        let raw_values = if let Ok(array) = value.downcast::<JsArray, _>(cx) {
+            array.to_vec(cx)?
+        } else if value.is_a::<JsString, _>(cx) {
+            vec![value]
+        } else {
+            return cx.throw_type_error("resolve values must be a string or array of strings");
+        };
+
+        let mut addrs = Vec::with_capacity(raw_values.len());
+        for raw in raw_values {
+            let Ok(addr_str) = raw.downcast::<JsString, _>(cx) else {
+                return cx.throw_type_error("resolve addresses must be strings");
+            };
+            match parse_socket_addr(&addr_str.value(cx)) {
+                Some(addr) => addrs.push(addr),
+                None => {
+                    return cx
+                        .throw_type_error(format!("Invalid resolve address for host '{}'", host));
+                }
+            }
+        }
+
+        if !addrs.is_empty() {
+            entries.push((host, addrs));
+        }
+    }
+
+    Ok(entries)
+}
+
+fn parse_resolve_opt(
+    cx: &mut FunctionContext,
+    obj: Handle<JsObject>,
+    key: &str,
+) -> NeonResult<Vec<(String, Vec<SocketAddr>)>> {
+    let Some(value) = obj.get_opt::<JsValue, _, _>(cx, key)? else {
+        return Ok(Vec::new());
+    };
+
+    if value.is_a::<JsUndefined, _>(cx) || value.is_a::<JsNull, _>(cx) {
+        return Ok(Vec::new());
+    }
+
+    let resolve_obj = value.downcast_or_throw::<JsObject, _>(cx)?;
+    parse_resolve_from_object(cx, resolve_obj)
 }
 
 fn create_session(mut cx: FunctionContext) -> JsResult<JsString> {
@@ -736,10 +839,23 @@ fn create_transport(mut cx: FunctionContext) -> JsResult<JsString> {
         connect_timeout_opt,
         read_timeout_opt,
         capture_diagnostics_opt,
+        resolve,
     ) = if let Some(value) = options_value {
         if value.is_a::<JsUndefined, _>(&mut cx) || value.is_a::<JsNull, _>(&mut cx) {
             (
-                None, None, None, None, None, None, None, None, None, None, None, None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                Vec::new(),
             )
         } else {
             let obj = value.downcast_or_throw::<JsObject, _>(&mut cx)?;
@@ -791,6 +907,7 @@ fn create_transport(mut cx: FunctionContext) -> JsResult<JsString> {
                 .get_opt(&mut cx, "captureDiagnostics")?
                 .and_then(|v: Handle<JsValue>| v.downcast::<JsBoolean, _>(&mut cx).ok())
                 .map(|v| v.value(&mut cx));
+            let resolve = parse_resolve_opt(&mut cx, obj, "resolve")?;
 
             (
                 browser,
@@ -805,11 +922,24 @@ fn create_transport(mut cx: FunctionContext) -> JsResult<JsString> {
                 connect_timeout,
                 read_timeout,
                 capture_diagnostics,
+                resolve,
             )
         }
     } else {
         (
-            None, None, None, None, None, None, None, None, None, None, None, None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            Vec::new(),
         )
     };
 
@@ -835,6 +965,7 @@ fn create_transport(mut cx: FunctionContext) -> JsResult<JsString> {
         connect_timeout_opt,
         read_timeout_opt,
         capture_diagnostics,
+        resolve,
     ) {
         Ok(id) => Ok(cx.string(id)),
         Err(e) => {
@@ -1581,6 +1712,7 @@ fn main(mut cx: ModuleContext) -> NeonResult<()> {
     cx.export_function("cancelBody", cancel_body_stream)?;
     cx.export_function("getProfiles", get_profiles)?;
     cx.export_function("getOperatingSystems", get_operating_systems)?;
+    cx.export_function("getEmulationHeaders", get_emulation_headers)?;
     cx.export_function("createSession", create_session)?;
     cx.export_function("clearSession", clear_session)?;
     cx.export_function("dropSession", drop_session)?;

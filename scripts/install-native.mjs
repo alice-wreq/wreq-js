@@ -38,9 +38,7 @@ function existsNative(triple) {
   const generic = path.join(rustDir, "wreq-js.node");
   if (!fs.existsSync(generic)) return undefined;
   try {
-    const others = fs
-      .readdirSync(rustDir)
-      .filter((n) => /^wreq-js\..+\.node$/.test(n));
+    const others = fs.readdirSync(rustDir).filter((n) => /^wreq-js\..+\.node$/.test(n));
     // foreign platform binaries present → do not treat generic as ok
     if (others.length > 0 && !others.includes(`wreq-js.${triple}.node`)) {
       return undefined;
@@ -57,11 +55,7 @@ function download(url, dest) {
       if (redirects > 5) return reject(new Error("too many redirects"));
       https
         .get(u, (res) => {
-          if (
-            res.statusCode >= 300 &&
-            res.statusCode < 400 &&
-            res.headers.location
-          ) {
+          if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
             return follow(res.headers.location, redirects + 1);
           }
           if (res.statusCode !== 200) {
@@ -116,12 +110,8 @@ async function main() {
     fs.chmodSync(dest, 0o755);
     console.log(`[wreq-js] installed ${path.relative(root, dest)}`);
   } catch (e) {
-    console.warn(
-      `[wreq-js] download failed: ${e instanceof Error ? e.message : e}`,
-    );
-    console.warn(
-      "[wreq-js] build from source (requires Rust + napi):\n  npm run build:rust",
-    );
+    console.warn(`[wreq-js] download failed: ${e instanceof Error ? e.message : e}`);
+    console.warn("[wreq-js] build from source (requires Rust + napi):\n  npm run build:rust");
   }
 }
 

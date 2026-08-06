@@ -152,3 +152,35 @@ export type EmulationOS =
   | 'linux'
   | 'android'
   | 'ios';
+
+/**
+ * Browser family aliases, each resolving to the newest profile in its family
+ */
+export type BrowserAlias =
+  | 'chrome'
+  | 'edge'
+  | 'firefox'
+  | 'firefox_android'
+  | 'firefox_private'
+  | 'okhttp'
+  | 'opera'
+  | 'safari'
+  | 'safari_ios'
+  | 'safari_ipad';
+
+/**
+ * Newest profile per browser family, resolved when this file was generated.
+ * These move as new profiles land upstream, so diff this map when upgrading.
+ */
+export const BROWSER_ALIASES: Record<BrowserAlias, BrowserProfile> = {
+  chrome: 'chrome_150',
+  edge: 'edge_148',
+  firefox: 'firefox_151',
+  firefox_android: 'firefox_android_135',
+  firefox_private: 'firefox_private_136',
+  okhttp: 'okhttp_5',
+  opera: 'opera_131',
+  safari: 'safari_26.4',
+  safari_ios: 'safari_ios_26.6',
+  safari_ipad: 'safari_ipad_26.2',
+};

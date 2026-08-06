@@ -3,6 +3,24 @@ import { randomUUID } from "node:crypto";
 import { STATUS_CODES } from "node:http";
 import { Readable } from "node:stream";
 import { ReadableStream } from "node:stream/web";
+//#region src/generated-types.ts
+/**
+* Newest profile per browser family, resolved when this file was generated.
+* These move as new profiles land upstream, so diff this map when upgrading.
+*/
+const BROWSER_ALIASES = {
+	chrome: "chrome_150",
+	edge: "edge_148",
+	firefox: "firefox_151",
+	firefox_android: "firefox_android_135",
+	firefox_private: "firefox_private_136",
+	okhttp: "okhttp_5",
+	opera: "opera_131",
+	safari: "safari_26.4",
+	safari_ios: "safari_ios_26.6",
+	safari_ipad: "safari_ipad_26.2"
+};
+//#endregion
 //#region src/native-require.ts
 const nativeRequire = createRequire(import.meta.url);
 //#endregion
@@ -35,6 +53,7 @@ let cachedProfiles;
 let cachedProfileSet;
 let cachedOperatingSystems;
 let cachedOperatingSystemSet;
+const cachedEmulationHeaders = /* @__PURE__ */ new Map();
 function detectLibc() {
 	if (process.platform !== "linux") return;
 	const envLibc = process.env.LIBC ?? process.env.npm_config_libc;
@@ -130,7 +149,7 @@ const bodyHandleFinalizer = typeof FinalizationRegistry === "function" ? new Fin
 		nativeBinding.cancelBody(handle.id);
 	} catch {}
 }) : void 0;
-const DEFAULT_BROWSER = "chrome_142";
+const DEFAULT_BROWSER = BROWSER_ALIASES.chrome;
 const DEFAULT_OS = "macos";
 const DEFAULT_REQUEST_TIMEOUT_MS = 3e5;
 const DEFAULT_TRUST_STORE = "combined";
@@ -521,6 +540,9 @@ var Response = class Response {
 		view.set(bytes);
 		return view.buffer;
 	}
+	async bytes() {
+		return new Uint8Array(await this.arrayBuffer());
+	}
 	async text() {
 		const bytes = await this.consumeBody();
 		return UTF8_DECODER.decode(bytes);
@@ -780,9 +802,7 @@ function resolveTransportContext(config, sessionDefaults) {
 	if (sessionDefaults?.transportId) {
 		if (config.emulation !== void 0) throw new RequestError("Session emulation cannot be changed after creation");
 		if (config.browser !== void 0) {
-			validateBrowserProfile(config.browser);
-			const lockedBrowser = sessionDefaults.transportMode.kind === "custom" ? void 0 : sessionDefaults.transportMode.browser;
-			if (config.browser !== lockedBrowser) throw new RequestError("Session browser cannot be changed after creation");
+			if (resolveProfile(config.browser) !== (sessionDefaults.transportMode.kind === "custom" ? void 0 : sessionDefaults.transportMode.browser)) throw new RequestError("Session browser cannot be changed after creation");
 		}
 		if (config.os !== void 0) {
 			validateOperatingSystem(config.os);
@@ -928,7 +948,22 @@ async function serializeBody(body) {
 			...contentType ? { contentType } : {}
 		};
 	}
-	throw new TypeError("Unsupported body type; expected string, Buffer, ArrayBuffer, ArrayBufferView, URLSearchParams, Blob, or FormData");
+	if (typeof body.getReader === "function") {
+		const reader = body.getReader();
+		const chunks = [];
+		while (true) {
+			const { done, value } = await reader.read();
+			if (done) break;
+			if (value) chunks.push(value);
+		}
+		return { body: Buffer.concat(chunks) };
+	}
+	if (typeof body[Symbol.asyncIterator] === "function" || typeof body[Symbol.iterator] === "function") {
+		const chunks = [];
+		for await (const chunk of body) chunks.push(chunk);
+		return { body: Buffer.concat(chunks) };
+	}
+	throw new TypeError("Unsupported body type; expected string, Buffer, ArrayBuffer, ArrayBufferView, URLSearchParams, Blob, FormData, ReadableStream, or an iterable of Uint8Array");
 }
 function ensureMethod(method) {
 	if (method === void 0 || method.length === 0) return "GET";
@@ -951,7 +986,7 @@ function ensureBodyAllowed(method, body) {
 function validateBrowserProfile(browser) {
 	if (browser === void 0) return;
 	if (typeof browser !== "string" || browser.trim().length === 0) throw new RequestError("Browser profile must not be empty");
-	if (!getProfileSet().has(browser)) throw new RequestError(`Invalid browser profile: ${browser}. Available profiles: ${getProfiles().join(", ")}`);
+	if (!getProfileSet().has(browser) && !Object.hasOwn(BROWSER_ALIASES, browser)) throw new RequestError(`Invalid browser profile: ${browser}. Available aliases: ${Object.keys(BROWSER_ALIASES).join(", ")}. Available profiles: ${getProfiles().join(", ")}`);
 }
 function validateOperatingSystem(os) {
 	if (os === void 0) return;
@@ -962,6 +997,14 @@ function validateTimeout(timeout) {
 	if (timeout === void 0) return;
 	if (typeof timeout !== "number" || !Number.isFinite(timeout)) throw new RequestError("Timeout must be a finite number");
 	if (timeout < 0) throw new RequestError("Timeout must be 0 (no timeout) or a positive number");
+}
+function validateResolve(resolve) {
+	if (typeof resolve !== "object" || resolve === null || Array.isArray(resolve)) throw new RequestError("resolve must be an object mapping hosts to addresses");
+	for (const [host, value] of Object.entries(resolve)) {
+		const addresses = Array.isArray(value) ? value : [value];
+		if (addresses.length === 0) throw new RequestError(`resolve['${host}'] must provide at least one address`);
+		for (const address of addresses) if (typeof address !== "string" || address.trim() === "") throw new RequestError(`resolve['${host}'] addresses must be non-empty strings`);
+	}
 }
 function validateTrustStore(trustStore) {
 	if (trustStore === void 0) return;
@@ -1313,12 +1356,12 @@ function serializeCustomEmulationOptions(emulation, allowEmpty) {
 }
 function resolveEmulationMode(browser, os, emulation) {
 	if (browser !== void 0) {
-		validateBrowserProfile(browser);
+		const resolvedBrowser = resolveProfile(browser);
 		if (os !== void 0) validateOperatingSystem(os);
 		const emulationJson = serializeCustomEmulationOptions(emulation, true);
 		return {
 			kind: "preset",
-			browser,
+			browser: resolvedBrowser,
 			os: os ?? DEFAULT_OS,
 			...emulationJson !== void 0 && { emulationJson }
 		};
@@ -1465,6 +1508,7 @@ async function fetch(input, init) {
 async function createTransport(options) {
 	const mode = resolveEmulationMode(options?.browser, options?.os, options?.emulation);
 	validateTrustStore(options?.trustStore);
+	if (options?.resolve !== void 0) validateResolve(options.resolve);
 	if (options?.poolIdleTimeout !== void 0) validatePositiveNumber(options.poolIdleTimeout, "poolIdleTimeout");
 	if (options?.poolMaxIdlePerHost !== void 0) validateNonNegativeInteger(options.poolMaxIdlePerHost, "poolMaxIdlePerHost");
 	if (options?.poolMaxSize !== void 0) validatePositiveInteger(options.poolMaxSize, "poolMaxSize");
@@ -1475,6 +1519,7 @@ async function createTransport(options) {
 			...options?.proxy !== void 0 && { proxy: options.proxy },
 			...options?.insecure !== void 0 && { insecure: options.insecure },
 			trustStore: options?.trustStore ?? DEFAULT_TRUST_STORE,
+			...options?.resolve !== void 0 && { resolve: options.resolve },
 			...options?.poolIdleTimeout !== void 0 && { poolIdleTimeout: options.poolIdleTimeout },
 			...options?.poolMaxIdlePerHost !== void 0 && { poolMaxIdlePerHost: options.poolMaxIdlePerHost },
 			...options?.poolMaxSize !== void 0 && { poolMaxSize: options.poolMaxSize },
@@ -1590,6 +1635,48 @@ function getOperatingSystems() {
 function getOperatingSystemSet() {
 	if (!cachedOperatingSystemSet) cachedOperatingSystemSet = new Set(getOperatingSystems());
 	return cachedOperatingSystemSet;
+}
+/**
+* Resolve a browser profile or family alias to a concrete profile name.
+*
+* Aliases track the newest profile shipped with the installed version of this library,
+* so the result moves when you upgrade. Log it if you need to know which fingerprint a
+* given run used.
+*
+* @param browser - A browser profile or family alias
+* @returns The concrete browser profile
+*
+* @example
+* ```typescript
+* import { resolveProfile } from '@alice-doctor/wreq-js';
+*
+* resolveProfile('firefox');     // e.g. 'firefox_151'
+* resolveProfile('firefox_143'); // 'firefox_143'
+* ```
+*/
+function resolveProfile(browser) {
+	validateBrowserProfile(browser);
+	return Object.hasOwn(BROWSER_ALIASES, browser) ? BROWSER_ALIASES[browser] : browser;
+}
+/**
+* Get the headers a browser profile injects into every request, without sending one.
+*
+* @param browser - Browser profile or family alias (defaults to the same profile as {@link fetch})
+* @param os - Operating system to emulate (defaults to the same OS as {@link fetch})
+*/
+function getEmulationHeaders(browser, os) {
+	validateOperatingSystem(os);
+	const resolvedBrowser = browser === void 0 ? DEFAULT_BROWSER : resolveProfile(browser);
+	const resolvedOs = os ?? DEFAULT_OS;
+	const cacheKey = `${resolvedBrowser}\0${resolvedOs}`;
+	let tuples = cachedEmulationHeaders.get(cacheKey);
+	if (!tuples) {
+		const readEmulationHeaders = nativeBinding.getEmulationHeaders;
+		if (!readEmulationHeaders) throw new RequestError("getEmulationHeaders is not available in this build of the native addon");
+		tuples = readEmulationHeaders(resolvedBrowser, resolvedOs);
+		cachedEmulationHeaders.set(cacheKey, tuples);
+	}
+	return new Headers(tuples);
 }
 /**
 * Convenience helper for GET requests using {@link fetch}.
@@ -2195,6 +2282,8 @@ var wreq_js_default = {
 	post,
 	getProfiles,
 	getOperatingSystems,
+	resolveProfile,
+	getEmulationHeaders,
 	createTransport,
 	createSession,
 	withSession,
@@ -2204,9 +2293,10 @@ var wreq_js_default = {
 	Response,
 	Transport,
 	Session,
-	RequestError
+	RequestError,
+	BROWSER_ALIASES
 };
 //#endregion
-export { Headers, RequestError, Response, Session, Transport, WebSocket, createSession, createTransport, wreq_js_default as default, fetch, get, getOperatingSystems, getProfiles, post, request, websocket, withSession };
+export { BROWSER_ALIASES, Headers, RequestError, Response, Session, Transport, WebSocket, createSession, createTransport, wreq_js_default as default, fetch, get, getEmulationHeaders, getOperatingSystems, getProfiles, post, request, resolveProfile, websocket, withSession };
 
 //# sourceMappingURL=wreq-js.js.map

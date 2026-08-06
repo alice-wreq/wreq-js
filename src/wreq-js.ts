@@ -2,11 +2,13 @@ import { randomUUID } from "node:crypto";
 import { STATUS_CODES } from "node:http";
 import { Readable } from "node:stream";
 import { ReadableStream } from "node:stream/web";
+import { BROWSER_ALIASES } from "./generated-types.js";
 import { nativeRequire as require } from "./native-require.js";
 import type {
   AlpnProtocol,
   AlpsProtocol,
   BodyInit,
+  BrowserAlias,
   BrowserProfile,
   CookieMode,
   CreateSessionOptions,
@@ -100,6 +102,7 @@ interface NativeTransportOptions {
   connectTimeout?: number;
   readTimeout?: number;
   captureDiagnostics?: boolean;
+  resolve?: Record<string, string | string[]>;
 }
 
 interface NativeRequestOptions {
@@ -144,12 +147,14 @@ let nativeBinding: {
   createTransport: (options: NativeTransportOptions) => string;
   dropTransport: (transportId: string) => void;
   getOperatingSystems?: () => string[];
+  getEmulationHeaders?: (browser: string, os: string) => HeaderTuple[];
 };
 
 let cachedProfiles: BrowserProfile[] | undefined;
 let cachedProfileSet: Set<string> | undefined;
 let cachedOperatingSystems: EmulationOS[] | undefined;
 let cachedOperatingSystemSet: Set<string> | undefined;
+const cachedEmulationHeaders = new Map<string, HeaderTuple[]>();
 
 function detectLibc(): "gnu" | "musl" | undefined {
   if (process.platform !== "linux") {
@@ -326,7 +331,8 @@ const bodyHandleFinalizer =
       })
     : undefined;
 
-const DEFAULT_BROWSER: BrowserProfile = "chrome_142";
+// Tracks the newest Chrome rather than pinning a version that silently goes stale.
+const DEFAULT_BROWSER: BrowserProfile = BROWSER_ALIASES.chrome;
 const DEFAULT_OS: EmulationOS = "macos";
 const DEFAULT_REQUEST_TIMEOUT_MS = 300_000;
 const DEFAULT_TRUST_STORE: TrustStoreMode = "combined";
@@ -984,6 +990,12 @@ export class Response {
     return view.buffer;
   }
 
+  // Built on arrayBuffer() so it inherits the same zero-copy path and aliasing
+  // semantics rather than introducing a second set.
+  async bytes(): Promise<Uint8Array> {
+    return new Uint8Array(await this.arrayBuffer());
+  }
+
   async text(): Promise<string> {
     const bytes = await this.consumeBody();
     return UTF8_DECODER.decode(bytes);
@@ -1402,10 +1414,12 @@ function resolveTransportContext(config: WreqRequestInit, sessionDefaults?: Sess
     }
 
     if (config.browser !== undefined) {
-      validateBrowserProfile(config.browser);
+      // Compare resolved profiles, so `browser: 'chrome'` matches a session created
+      // with the concrete profile that alias points at.
+      const requestedBrowser = resolveProfile(config.browser);
       const lockedBrowser =
         sessionDefaults.transportMode.kind === "custom" ? undefined : sessionDefaults.transportMode.browser;
-      if (config.browser !== lockedBrowser) {
+      if (requestedBrowser !== lockedBrowser) {
         throw new RequestError("Session browser cannot be changed after creation");
       }
     }
@@ -1688,8 +1702,36 @@ async function serializeBody(body?: BodyInit | null): Promise<SerializedBody> {
     return { body: buffer, ...(contentType ? { contentType } : {}) };
   }
 
+  // Streamed bodies: duck-typed rather than `instanceof ReadableStream` because
+  // cross-realm streams may not share the same constructor.
+  if (typeof (body as ReadableStream<Uint8Array>).getReader === "function") {
+    const reader = (body as ReadableStream<Uint8Array>).getReader();
+    const chunks: Uint8Array[] = [];
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) {
+        break;
+      }
+      if (value) {
+        chunks.push(value);
+      }
+    }
+    return { body: Buffer.concat(chunks) };
+  }
+
+  if (
+    typeof (body as AsyncIterable<Uint8Array>)[Symbol.asyncIterator] === "function" ||
+    typeof (body as Iterable<Uint8Array>)[Symbol.iterator] === "function"
+  ) {
+    const chunks: Uint8Array[] = [];
+    for await (const chunk of body as AsyncIterable<Uint8Array>) {
+      chunks.push(chunk);
+    }
+    return { body: Buffer.concat(chunks) };
+  }
+
   throw new TypeError(
-    "Unsupported body type; expected string, Buffer, ArrayBuffer, ArrayBufferView, URLSearchParams, Blob, or FormData",
+    "Unsupported body type; expected string, Buffer, ArrayBuffer, ArrayBufferView, URLSearchParams, Blob, FormData, ReadableStream, or an iterable of Uint8Array",
   );
 }
 
@@ -1724,7 +1766,7 @@ function ensureBodyAllowed(method: string, body?: Buffer): void {
   }
 }
 
-function validateBrowserProfile(browser?: BrowserProfile | string): void {
+function validateBrowserProfile(browser?: BrowserProfile | BrowserAlias | string): void {
   if (browser === undefined) {
     return;
   }
@@ -1733,8 +1775,11 @@ function validateBrowserProfile(browser?: BrowserProfile | string): void {
     throw new RequestError("Browser profile must not be empty");
   }
 
-  if (!getProfileSet().has(browser)) {
-    throw new RequestError(`Invalid browser profile: ${browser}. Available profiles: ${getProfiles().join(", ")}`);
+  // Object.hasOwn, not `in`, so inherited keys like "toString" are not treated as aliases.
+  if (!getProfileSet().has(browser) && !Object.hasOwn(BROWSER_ALIASES, browser)) {
+    throw new RequestError(
+      `Invalid browser profile: ${browser}. Available aliases: ${Object.keys(BROWSER_ALIASES).join(", ")}. Available profiles: ${getProfiles().join(", ")}`,
+    );
   }
 }
 
@@ -1763,6 +1808,26 @@ function validateTimeout(timeout?: number): void {
 
   if (timeout < 0) {
     throw new RequestError("Timeout must be 0 (no timeout) or a positive number");
+  }
+}
+
+function validateResolve(resolve: unknown): void {
+  if (typeof resolve !== "object" || resolve === null || Array.isArray(resolve)) {
+    throw new RequestError("resolve must be an object mapping hosts to addresses");
+  }
+
+  for (const [host, value] of Object.entries(resolve)) {
+    const addresses = Array.isArray(value) ? value : [value];
+
+    if (addresses.length === 0) {
+      throw new RequestError(`resolve['${host}'] must provide at least one address`);
+    }
+
+    for (const address of addresses) {
+      if (typeof address !== "string" || address.trim() === "") {
+        throw new RequestError(`resolve['${host}'] addresses must be non-empty strings`);
+      }
+    }
   }
 }
 
@@ -2393,12 +2458,14 @@ function serializeCustomEmulationOptions(
 }
 
 function resolveEmulationMode(
-  browser: BrowserProfile | undefined,
+  browser: BrowserProfile | BrowserAlias | undefined,
   os: EmulationOS | undefined,
   emulation: CustomEmulationOptions | undefined,
 ): ResolvedEmulationMode {
   if (browser !== undefined) {
-    validateBrowserProfile(browser);
+    // Resolve here so aliases never reach the native layer, where an unrecognized
+    // profile silently falls back to Chrome instead of failing.
+    const resolvedBrowser = resolveProfile(browser);
     if (os !== undefined) {
       validateOperatingSystem(os);
     }
@@ -2406,7 +2473,7 @@ function resolveEmulationMode(
     const emulationJson = serializeCustomEmulationOptions(emulation, true);
     return {
       kind: "preset",
-      browser,
+      browser: resolvedBrowser,
       os: os ?? DEFAULT_OS,
       ...(emulationJson !== undefined && { emulationJson }),
     };
@@ -2635,6 +2702,10 @@ export async function createTransport(options?: CreateTransportOptions): Promise
   const mode = resolveEmulationMode(options?.browser, options?.os, options?.emulation);
   validateTrustStore(options?.trustStore);
 
+  if (options?.resolve !== undefined) {
+    validateResolve(options.resolve);
+  }
+
   if (options?.poolIdleTimeout !== undefined) {
     validatePositiveNumber(options.poolIdleTimeout, "poolIdleTimeout");
   }
@@ -2656,6 +2727,7 @@ export async function createTransport(options?: CreateTransportOptions): Promise
       ...(options?.proxy !== undefined && { proxy: options.proxy }),
       ...(options?.insecure !== undefined && { insecure: options.insecure }),
       trustStore: options?.trustStore ?? DEFAULT_TRUST_STORE,
+      ...(options?.resolve !== undefined && { resolve: options.resolve }),
       ...(options?.poolIdleTimeout !== undefined && { poolIdleTimeout: options.poolIdleTimeout }),
       ...(options?.poolMaxIdlePerHost !== undefined && { poolMaxIdlePerHost: options.poolMaxIdlePerHost }),
       ...(options?.poolMaxSize !== undefined && { poolMaxSize: options.poolMaxSize }),
@@ -2870,6 +2942,60 @@ function getOperatingSystemSet(): Set<string> {
   }
 
   return cachedOperatingSystemSet;
+}
+
+/**
+ * Resolve a browser profile or family alias to a concrete profile name.
+ *
+ * Aliases track the newest profile shipped with the installed version of this library,
+ * so the result moves when you upgrade. Log it if you need to know which fingerprint a
+ * given run used.
+ *
+ * @param browser - A browser profile or family alias
+ * @returns The concrete browser profile
+ *
+ * @example
+ * ```typescript
+ * import { resolveProfile } from '@alice-doctor/wreq-js';
+ *
+ * resolveProfile('firefox');     // e.g. 'firefox_151'
+ * resolveProfile('firefox_143'); // 'firefox_143'
+ * ```
+ */
+export function resolveProfile(browser: BrowserProfile | BrowserAlias): BrowserProfile {
+  validateBrowserProfile(browser);
+
+  return Object.hasOwn(BROWSER_ALIASES, browser)
+    ? BROWSER_ALIASES[browser as BrowserAlias]
+    : (browser as BrowserProfile);
+}
+
+/**
+ * Get the headers a browser profile injects into every request, without sending one.
+ *
+ * @param browser - Browser profile or family alias (defaults to the same profile as {@link fetch})
+ * @param os - Operating system to emulate (defaults to the same OS as {@link fetch})
+ */
+export function getEmulationHeaders(browser?: BrowserProfile | BrowserAlias, os?: EmulationOS): Headers {
+  validateOperatingSystem(os);
+
+  const resolvedBrowser = browser === undefined ? DEFAULT_BROWSER : resolveProfile(browser);
+  const resolvedOs = os ?? DEFAULT_OS;
+  const cacheKey = `${resolvedBrowser}\0${resolvedOs}`;
+
+  let tuples = cachedEmulationHeaders.get(cacheKey);
+  if (!tuples) {
+    const readEmulationHeaders = nativeBinding.getEmulationHeaders;
+    if (!readEmulationHeaders) {
+      throw new RequestError("getEmulationHeaders is not available in this build of the native addon");
+    }
+
+    tuples = readEmulationHeaders(resolvedBrowser, resolvedOs);
+    cachedEmulationHeaders.set(cacheKey, tuples);
+  }
+
+  // Fresh instance per call - callers must not be able to mutate the cache.
+  return new Headers(tuples);
 }
 
 /**
@@ -3856,6 +3982,7 @@ export type {
   AlpnProtocol,
   AlpsProtocol,
   BodyInit,
+  BrowserAlias,
   BrowserProfile,
   CookieMode,
   CreateSessionOptions,
@@ -3876,6 +4003,7 @@ export type {
   RequestEventType,
   RequestInit,
   RequestOptions,
+  ResolveMap,
   SessionHandle,
   SessionWebSocketOptions,
   TlsVersion,
@@ -3888,7 +4016,7 @@ export type {
   WebSocketOptions,
 } from "./types.js";
 
-export { RequestError };
+export { RequestError, BROWSER_ALIASES };
 
 export default {
   fetch,
@@ -3897,6 +4025,8 @@ export default {
   post,
   getProfiles,
   getOperatingSystems,
+  resolveProfile,
+  getEmulationHeaders,
   createTransport,
   createSession,
   withSession,
@@ -3907,4 +4037,5 @@ export default {
   Transport,
   Session,
   RequestError,
+  BROWSER_ALIASES,
 };

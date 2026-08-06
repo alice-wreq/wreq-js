@@ -1,5 +1,5 @@
 import { Readable } from "node:stream";
-import { ReadableStream } from "node:stream/web";
+import { ReadableStream as ReadableStream$1 } from "node:stream/web";
 //#region src/generated-types.d.ts
 /**
  * Auto-generated from Rust build script
@@ -13,6 +13,15 @@ type BrowserProfile = 'chrome_100' | 'chrome_101' | 'chrome_104' | 'chrome_105' 
  * Operating systems supported for emulation
  */
 type EmulationOS = 'windows' | 'macos' | 'linux' | 'android' | 'ios';
+/**
+ * Browser family aliases, each resolving to the newest profile in its family
+ */
+type BrowserAlias = 'chrome' | 'edge' | 'firefox' | 'firefox_android' | 'firefox_private' | 'okhttp' | 'opera' | 'safari' | 'safari_ios' | 'safari_ipad';
+/**
+ * Newest profile per browser family, resolved when this file was generated.
+ * These move as new profiles land upstream, so diff this map when upgrading.
+ */
+declare const BROWSER_ALIASES: Record<BrowserAlias, BrowserProfile>;
 //#endregion
 //#region src/types.d.ts
 /**
@@ -70,6 +79,14 @@ type AlpsProtocol = "HTTP1" | "HTTP2" | "HTTP3";
 type TlsVersion = "1.0" | "1.1" | "1.2" | "1.3" | "TLS1.0" | "TLS1.1" | "TLS1.2" | "TLS1.3";
 type Http2PseudoHeaderId = "Method" | "Scheme" | "Authority" | "Path" | "Protocol";
 type TrustStoreMode = "combined" | "mozilla" | "defaultPaths";
+/**
+ * Overrides DNS resolution for specific hosts.
+ *
+ * Each key is a hostname and each value is one address, or an array of fallback addresses,
+ * written as `ip` or `ip:port`. Following reqwest/wreq semantics the port is optional and ignored;
+ * the request URL's port is always used.
+ */
+type ResolveMap = Record<string, string | string[]>;
 type Http2SettingId = "HeaderTableSize" | "EnablePush" | "MaxConcurrentStreams" | "InitialWindowSize" | "MaxFrameSize" | "MaxHeaderListSize" | "EnableConnectProtocol" | "NoRfc7540Priorities";
 interface Http2StreamDependency {
   dependencyId: number;
@@ -173,7 +190,7 @@ interface CustomEmulationOptions {
  * const body: BodyInit = new FormData();
  * ```
  */
-type BodyInit = string | ArrayBuffer | ArrayBufferView | URLSearchParams | Buffer | Blob | FormData;
+type BodyInit = string | ArrayBuffer | ArrayBufferView | URLSearchParams | Buffer | Blob | FormData | ReadableStream<Uint8Array> | AsyncIterable<Uint8Array> | Iterable<Uint8Array>;
 /**
  * Details about why a WebSocket connection closed.
  */
@@ -286,9 +303,12 @@ interface RequestInit {
    * Browser profile to impersonate for this request.
    * Applies browser profile behavior handled by the native layer.
    * Ignored when `transport` is provided.
-   * @default 'chrome_142'
+   *
+   * Accepts a concrete profile ('firefox_149') or a family alias ('firefox'),
+   * which resolves to the newest profile in that family.
+   * @default 'chrome'
    */
-  browser?: BrowserProfile;
+  browser?: BrowserProfile | BrowserAlias;
   /**
    * Operating system to emulate for this request.
    * Influences platform-specific behavior handled by the native layer.
@@ -395,9 +415,12 @@ interface CreateSessionOptions {
    */
   defaultHeaders?: HeadersInit;
   /**
-   * Browser profile to bind to this session. Defaults to 'chrome_142'.
+   * Browser profile to bind to this session. Defaults to 'chrome'.
+   *
+   * Accepts a concrete profile ('firefox_149') or a family alias ('firefox'),
+   * which resolves to the newest profile in that family.
    */
-  browser?: BrowserProfile;
+  browser?: BrowserProfile | BrowserAlias;
   /**
    * Operating system to bind to this session. Defaults to 'macos'.
    */
@@ -449,8 +472,11 @@ interface CreateTransportOptions {
   proxy?: string;
   /**
    * Browser profile to impersonate for this transport.
+   *
+   * Accepts a concrete profile ('firefox_149') or a family alias ('firefox'),
+   * which resolves to the newest profile in that family.
    */
-  browser?: BrowserProfile;
+  browser?: BrowserProfile | BrowserAlias;
   /**
    * Operating system to emulate for this transport.
    */
@@ -468,6 +494,10 @@ interface CreateTransportOptions {
    * @default "combined"
    */
   trustStore?: TrustStoreMode;
+  /**
+   * Override DNS resolution for specific hosts. See {@link ResolveMap}.
+   */
+  resolve?: ResolveMap;
   /**
    * Idle timeout for pooled connections (ms).
    */
@@ -522,9 +552,12 @@ interface RequestOptions {
   /**
    * Browser profile to impersonate.
    * Applies browser profile behavior handled by the native layer.
-   * @default 'chrome_142'
+   *
+   * Accepts a concrete profile ('firefox_149') or a family alias ('firefox'),
+   * which resolves to the newest profile in that family.
+   * @default 'chrome'
    */
-  browser?: BrowserProfile;
+  browser?: BrowserProfile | BrowserAlias;
   /**
    * Operating system to emulate.
    * @default 'macos'
@@ -695,9 +728,12 @@ interface WebSocketOptions {
   /**
    * Browser profile to impersonate for the WebSocket upgrade request.
    * Automatically applies browser-specific headers and TLS fingerprints.
-   * @default 'chrome_142'
+   *
+   * Accepts a concrete profile ('firefox_149') or a family alias ('firefox'),
+   * which resolves to the newest profile in that family.
+   * @default 'chrome'
    */
-  browser?: BrowserProfile;
+  browser?: BrowserProfile | BrowserAlias;
   /**
    * Operating system to emulate for the WebSocket handshake.
    * @default 'macos'
@@ -910,14 +946,15 @@ declare class Response {
   private bodyStream;
   private nativeHandleAvailable;
   private nativeHandle;
-  constructor(payload: NativeResponse, requestUrl: string, bodySource?: ReadableStream<Uint8Array> | null);
+  constructor(payload: NativeResponse, requestUrl: string, bodySource?: ReadableStream$1<Uint8Array> | null);
   get redirected(): boolean;
   get statusText(): string;
   get headers(): Headers;
   get cookies(): Record<string, string | string[]>;
-  get body(): ReadableStream<Uint8Array> | null;
+  get body(): ReadableStream$1<Uint8Array> | null;
   json<T = unknown>(): Promise<T>;
   arrayBuffer(): Promise<ArrayBuffer>;
+  bytes(): Promise<Uint8Array>;
   text(): Promise<string>;
   blob(): Promise<Blob>;
   formData(): Promise<FormData>;
@@ -1021,6 +1058,32 @@ declare function getProfiles(): BrowserProfile[];
  * @returns Array of operating system identifiers
  */
 declare function getOperatingSystems(): EmulationOS[];
+/**
+ * Resolve a browser profile or family alias to a concrete profile name.
+ *
+ * Aliases track the newest profile shipped with the installed version of this library,
+ * so the result moves when you upgrade. Log it if you need to know which fingerprint a
+ * given run used.
+ *
+ * @param browser - A browser profile or family alias
+ * @returns The concrete browser profile
+ *
+ * @example
+ * ```typescript
+ * import { resolveProfile } from '@alice-doctor/wreq-js';
+ *
+ * resolveProfile('firefox');     // e.g. 'firefox_151'
+ * resolveProfile('firefox_143'); // 'firefox_143'
+ * ```
+ */
+declare function resolveProfile(browser: BrowserProfile | BrowserAlias): BrowserProfile;
+/**
+ * Get the headers a browser profile injects into every request, without sending one.
+ *
+ * @param browser - Browser profile or family alias (defaults to the same profile as {@link fetch})
+ * @param os - Operating system to emulate (defaults to the same OS as {@link fetch})
+ */
+declare function getEmulationHeaders(browser?: BrowserProfile | BrowserAlias, os?: EmulationOS): Headers;
 /**
  * Convenience helper for GET requests using {@link fetch}.
  */
@@ -1133,6 +1196,8 @@ declare const _default: {
   post: typeof post;
   getProfiles: typeof getProfiles;
   getOperatingSystems: typeof getOperatingSystems;
+  resolveProfile: typeof resolveProfile;
+  getEmulationHeaders: typeof getEmulationHeaders;
   createTransport: typeof createTransport;
   createSession: typeof createSession;
   withSession: typeof withSession;
@@ -1143,7 +1208,8 @@ declare const _default: {
   Transport: typeof Transport;
   Session: typeof Session;
   RequestError: typeof RequestError;
+  BROWSER_ALIASES: Record<BrowserAlias, BrowserProfile>;
 };
 //#endregion
-export { type AlpnProtocol, type AlpsProtocol, type BodyInit, type BrowserProfile, type CookieMode, type CreateSessionOptions, type CreateTransportOptions, type CustomEmulationOptions, type CustomHttp1Options, type CustomHttp2Options, type CustomTlsOptions, type EmulationOS, Headers, type HeadersInit, type Http2ExperimentalSetting, type Http2Priority, type Http2PseudoHeaderId, type Http2SettingId, type Http2StreamDependency, type RequestDiagnostics, RequestError, type RequestEvent, type RequestEventType, type RequestInit, type RequestOptions, Response, Session, type SessionHandle, type SessionWebSocketOptions, type TlsVersion, Transport, WebSocket, type WebSocketBinaryType, type WebSocketCloseEvent, type WebSocketErrorEvent, type WebSocketEventType, type WebSocketMessageEvent, type WebSocketOpenEvent, type WebSocketOptions, createSession, createTransport, _default as default, fetch, get, getOperatingSystems, getProfiles, post, request, websocket, withSession };
+export { type AlpnProtocol, type AlpsProtocol, BROWSER_ALIASES, type BodyInit, type BrowserAlias, type BrowserProfile, type CookieMode, type CreateSessionOptions, type CreateTransportOptions, type CustomEmulationOptions, type CustomHttp1Options, type CustomHttp2Options, type CustomTlsOptions, type EmulationOS, Headers, type HeadersInit, type Http2ExperimentalSetting, type Http2Priority, type Http2PseudoHeaderId, type Http2SettingId, type Http2StreamDependency, type RequestDiagnostics, RequestError, type RequestEvent, type RequestEventType, type RequestInit, type RequestOptions, type ResolveMap, Response, Session, type SessionHandle, type SessionWebSocketOptions, type TlsVersion, Transport, WebSocket, type WebSocketBinaryType, type WebSocketCloseEvent, type WebSocketErrorEvent, type WebSocketEventType, type WebSocketMessageEvent, type WebSocketOpenEvent, type WebSocketOptions, createSession, createTransport, _default as default, fetch, get, getEmulationHeaders, getOperatingSystems, getProfiles, post, request, resolveProfile, websocket, withSession };
 //# sourceMappingURL=wreq-js.d.ts.map
