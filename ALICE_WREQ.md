@@ -78,7 +78,8 @@ wreq-util = { path = "../vendor/wreq-util", ... }
 1. Push `alice-wreq/wreq-rust` `main`
 2. Workflow `notify-wreq-js` → `repository_dispatch` to this repo  
    (needs `WREQ_JS_DISPATCH_TOKEN` PAT with `repo` on wreq-js if default token insufficient)
-3. `build-and-release` rebuilds natives against latest `wreq-rust` main
+3. `build-and-release` rebuilds natives against latest `wreq-rust` main  
+   (matrix: `darwin-arm64`, `linux-x64-gnu`, `linux-arm64-gnu`, **`win32-x64-msvc`**)
 4. Artifacts uploaded to GitHub Release
 
 ## License

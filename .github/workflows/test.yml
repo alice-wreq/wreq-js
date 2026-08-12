@@ -64,32 +64,36 @@ jobs:
         shell: pwsh
         run: nasm -v
 
+      - name: Install Ninja (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          choco install ninja -y
+          ninja --version
+
+      - name: MSVC developer command prompt (Windows)
+        if: runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
       - name: Install dependencies
         run: npm ci
+        env:
+          WREQ_JS_SKIP_POSTINSTALL: "1"
 
-      - name: Patch boring-sys2 on Windows
+      # Note: stack uses btls (not boring-sys2). No Windows source patch required.
+
+      - name: Build native module (Windows x64 MSVC)
         if: runner.os == 'Windows'
-        shell: bash
-        run: |
-          cd rust
-          
-          cargo fetch
-
-          FILE=$(find ~/.cargo/registry/src -name "main.rs" | grep "boring-sys2" | grep "build")
-          
-          if [ -z "$FILE" ]; then
-            echo "Error: Could not find boring-sys2 build/main.rs to patch"
-            exit 1
-          fi
-          
-          echo "Patching $FILE"
-
-          sed -i 's/let bssl_dir = built_boring_source_path(config);/let bssl_dir = built_boring_source_path(config); if config.target.ends_with("-msvc") { println!("cargo:rustc-link-search=native={}\/lib", bssl_dir.display()); }/' "$FILE"
-
-          sed -i 's/cfg.build_target("ssl").build();/\/\/ cfg.build_target("ssl").build();/' "$FILE"
-          sed -i 's/cfg.build_target("crypto").build()/cfg.build_target("ALL_BUILD").build()/' "$FILE"
+        shell: pwsh
+        env:
+          CMAKE_GENERATOR: Ninja
+          CARGO_BUILD_TARGET: x86_64-pc-windows-msvc
+        run: npm run build:rust -- --target x86_64-pc-windows-msvc
 
       - name: Build native module
+        if: runner.os != 'Windows'
         run: npm run build:rust
 
       - name: Smoke test native addon

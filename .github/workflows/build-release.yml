@@ -20,11 +20,18 @@ jobs:
         include:
           - os: macos-14
             triple: darwin-arm64
+            arch: arm64
           # macos-13 (darwin-x64) excluded: runner/build unreliable
           - os: ubuntu-22.04
             triple: linux-x64-gnu
+            arch: x64
           - os: ubuntu-22.04-arm
             triple: linux-arm64-gnu
+            arch: arm64
+          # Windows x64 only (no ia32 / arm64)
+          - os: windows-2022
+            triple: win32-x64-msvc
+            arch: x64
     runs-on: ${{ matrix.os }}
     # free-tier arm runners may be unavailable
     continue-on-error: ${{ matrix.triple == 'linux-arm64-gnu' }}
@@ -32,17 +39,39 @@ jobs:
       - uses: actions/checkout@v4
 
       - uses: dtolnay/rust-toolchain@stable
+        # Host triple is enough for macOS/Windows; Linux builds use manylinux containers.
 
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
+          architecture: ${{ matrix.arch }}
 
-      - name: Install Linux build deps (cmake for btls/boringssl)
-        if: runner.os == 'macOS'
-        run: true
+      # --- Windows deps (btls/BoringSSL needs NASM + Ninja on MSVC) ---
+      - name: Setup NASM (Windows)
+        if: runner.os == 'Windows'
+        uses: ilammy/setup-nasm@v1
+
+      - name: Verify NASM (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: nasm -v
+
+      - name: Install Ninja (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          choco install ninja -y
+          ninja --version
+
+      # Puts cl.exe / link.exe on PATH for CMAKE_GENERATOR=Ninja + btls/BoringSSL
+      - name: MSVC developer command prompt (Windows)
+        if: runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
 
       - name: Install deps
-        if: runner.os == 'macOS'
+        if: runner.os == 'macOS' || runner.os == 'Windows'
         run: npm ci || npm install
         env:
           WREQ_JS_SKIP_POSTINSTALL: "1"
@@ -55,6 +84,19 @@ jobs:
           npm run build:ts
         env:
           WREQ_JS_SKIP_POSTINSTALL: "1"
+
+      - name: Build native (Windows x64 MSVC)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        env:
+          WREQ_JS_SKIP_POSTINSTALL: "1"
+          RUST_BACKTRACE: "1"
+          # Ninja handles BoringSSL assembly; VS generator often skips asm steps
+          CMAKE_GENERATOR: Ninja
+          CARGO_BUILD_TARGET: x86_64-pc-windows-msvc
+        run: |
+          Get-ChildItem rust -Filter "*.node" -ErrorAction SilentlyContinue | Remove-Item -Force
+          npm run build:rust -- --target x86_64-pc-windows-msvc
 
       - name: Build native (linux-x64-gnu, manylinux_2_28)
         if: matrix.triple == 'linux-x64-gnu'
@@ -137,9 +179,10 @@ jobs:
           mkdir -p release-assets
           find artifacts -name 'wreq-js.*.node' -exec cp -f {} release-assets/ \;
           ls -la release-assets/
-          # linux-x64-gnu is required; arm64 best-effort
+          # required: linux-x64, darwin-arm64, win32-x64; arm64-linux best-effort
           test -f release-assets/wreq-js.linux-x64-gnu.node
           test -f release-assets/wreq-js.darwin-arm64.node
+          test -f release-assets/wreq-js.win32-x64-msvc.node
 
       - name: Publish GitHub Release (rolling latest)
         uses: softprops/action-gh-release@v2
@@ -203,6 +246,7 @@ jobs:
           # Core platforms for alice (darwin-x64 optional — not in this matrix)
           test -f rust/wreq-js.linux-x64-gnu.node
           test -f rust/wreq-js.darwin-arm64.node
+          test -f rust/wreq-js.win32-x64-msvc.node
           npm run build:ts
 
       - name: Publish to npm

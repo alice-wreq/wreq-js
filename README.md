@@ -71,9 +71,9 @@ import { fetch, getProfiles } from "@alice-doctor/wreq-js";
 ```
 
 Prebuilt natives (GitHub Releases / postinstall):
-1. macOS — `darwin-arm64`, `darwin-x64`
-2. Linux — `linux-x64-gnu`, `linux-arm64-gnu`, `linux-x64-musl`, `linux-arm64-musl`
-3. Windows — when published
+1. macOS — `darwin-arm64` (and `darwin-x64` when published)
+2. Linux — `linux-x64-gnu`, `linux-arm64-gnu` (musl when published)
+3. Windows — `win32-x64-msvc` (64-bit only)
 
 If a matching prebuilt is missing, postinstall tries [GitHub Releases](https://github.com/alice-wreq/wreq-js/releases); otherwise build from source (Rust + cmake).
 
