@@ -1,5 +1,12 @@
 # wreq-js
 
+> **alice-wreq fork** — published as `@alice-doctor/wreq-js` (`npm install @alice-doctor/wreq-js`,
+> `import { fetch } from "@alice-doctor/wreq-js"`). Built on the
+> [alice-wreq/wreq-rust](https://github.com/alice-wreq/wreq-rust) engine with extra profiles
+> (`safari_ios_26.6`, `chrome_150`) and a `#force-absolute` proxy marker. See
+> [ALICE_WREQ.md](./ALICE_WREQ.md). The rest of this README is upstream's and uses the upstream
+> package name.
+
 [![npm](https://img.shields.io/npm/v/wreq-js.svg)](https://www.npmjs.com/package/wreq-js)
 [![downloads](https://img.shields.io/npm/dm/wreq-js.svg)](https://www.npmjs.com/package/wreq-js)
 [![CI](https://github.com/sqdshguy/wreq-js/actions/workflows/test.yml/badge.svg)](https://github.com/sqdshguy/wreq-js/actions/workflows/test.yml)
