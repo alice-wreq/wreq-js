@@ -7,7 +7,7 @@
   },
   "files": {
     "ignoreUnknown": false,
-    "includes": ["**", "!src/generated-types.ts", "!npm"]
+    "includes": ["**", "!src/generated-types.ts", "!npm", "!vendor"]
   },
   "formatter": {
     "enabled": true,
