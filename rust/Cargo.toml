@@ -9,9 +9,11 @@ authors = ["Oleksandr Herasymov", "will-work-for-meal"]
 crate-type = ["cdylib"]
 
 [dependencies]
-# HTTP client with browser impersonation
+# HTTP client with browser impersonation.
+# The crates.io requirement is kept as-is; [patch.crates-io] below swaps in the
+# alice-wreq/wreq-rust fork (also for vendor/wreq-util, so only one wreq is built).
 wreq = { version = "0.16.3", default-features = false, features = ["cookies", "gzip", "brotli", "deflate", "zstd", "charset", "system-proxy", "socks", "ws", "stream", "webpki-roots", "tokio-rt"] }
-wreq-util = { version = "0.2.0", features = ["emulation-serde", "tokio-rt", "emulation-compression"] }
+wreq-util = { path = "../vendor/wreq-util", features = ["emulation-serde", "tokio-rt", "emulation-compression"] }
 webpki-root-certs = "1.0.11"
 
 # WebSocket support
@@ -47,7 +49,7 @@ uuid = { version = "1.29.0", features = ["v4"] }
 [build-dependencies]
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = "1.0.154"
-wreq-util = { version = "0.2.0", features = ["emulation-serde", "tokio-rt", "emulation-compression"] }
+wreq-util = { path = "../vendor/wreq-util", features = ["emulation-serde", "tokio-rt", "emulation-compression"] }
 
 [dev-dependencies]
 btls = "0.5.6"
@@ -57,3 +59,9 @@ opt-level = 3
 lto = true
 codegen-units = 1
 debug = false
+
+# alice-wreq: engine = alice-wreq/wreq-rust (upstream wreq v0.16.3 + force_absolute).
+# Pinned to a tag for reproducible native builds. For local engine work, override with:
+#   cargo build --config 'patch.crates-io.wreq.path="../../wreq-rust"'
+[patch.crates-io]
+wreq = { git = "https://github.com/alice-wreq/wreq-rust", tag = "alice-v0.16.3" }
