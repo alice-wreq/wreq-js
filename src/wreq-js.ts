@@ -250,9 +250,10 @@ function loadNativeBinding() {
     );
   }
 
-  // Locally built addons win over the published platform package so that
-  // `npm run build:rust` keeps shadowing an installed binding during development.
-  const candidates = [`../rust/wreq-js.${target}.node`, `@wreq-js/binding-${target}`, "../rust/wreq-js.node"];
+  // alice-wreq ships natives inside the package (rust/wreq-js.<target>.node, fetched by
+  // scripts/install-native.mjs when missing). Upstream's @wreq-js/binding-* packages are
+  // intentionally not consulted: they are built against upstream wreq, not our fork.
+  const candidates = [`../rust/wreq-js.${target}.node`, "../rust/wreq-js.node"];
 
   let notFoundError: unknown;
   let loadError: unknown;
