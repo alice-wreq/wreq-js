@@ -423,6 +423,8 @@ export interface RequestInit {
   /**
    * Proxy URL to route the request through (e.g., 'http://proxy.example.com:8080').
    * Proxy support depends on the native layer and proxy scheme.
+   * Append `#force-absolute` (alice-wreq) to send HTTPS targets to an HTTP proxy in
+   * absolute-form instead of opening a CONNECT tunnel, e.g. 'http://proxy:8080#force-absolute'.
    * Ignored when `transport` is provided.
    */
   proxy?: string;
@@ -594,6 +596,8 @@ export interface CreateSessionOptions {
   emulation?: CustomEmulationOptions;
   /**
    * Optional proxy for every request made through the session.
+   * Append `#force-absolute` (alice-wreq) to send HTTPS targets to an HTTP proxy in
+   * absolute-form instead of opening a CONNECT tunnel, e.g. 'http://proxy:8080#force-absolute'.
    */
   proxy?: string;
   /**
@@ -635,6 +639,8 @@ export interface CreateSessionOptions {
 export interface CreateTransportOptions {
   /**
    * Proxy URL to route requests through (e.g., 'http://proxy.example.com:8080').
+   * Append `#force-absolute` (alice-wreq) to send HTTPS targets to an HTTP proxy in
+   * absolute-form instead of opening a CONNECT tunnel, e.g. 'http://proxy:8080#force-absolute'.
    */
   proxy?: string;
 

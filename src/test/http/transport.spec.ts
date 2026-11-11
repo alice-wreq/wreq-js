@@ -112,6 +112,39 @@ describe("Transport API", () => {
     }
   });
 
+  test("proxy #force-absolute sends HTTPS targets in absolute-form instead of CONNECT (alice-wreq)", async () => {
+    const seen: Array<{ method: string; url: string }> = [];
+    const proxyServer = createServer((req, res) => {
+      seen.push({ method: req.method ?? "", url: req.url ?? "" });
+      res.writeHead(200, { "content-type": "text/plain" });
+      res.end("via-proxy");
+    });
+    proxyServer.on("connect", (req, socket) => {
+      seen.push({ method: req.method ?? "", url: req.url ?? "" });
+      socket.end("HTTP/1.1 403 Forbidden\r\n\r\n");
+    });
+
+    await new Promise<void>((resolve) => proxyServer.listen(0, "127.0.0.1", resolve));
+    const { port } = proxyServer.address() as AddressInfo;
+    const target = "https://force-absolute.invalid/get?x=1";
+
+    try {
+      const response = await wreqFetch(target, {
+        proxy: `http://127.0.0.1:${port}#force-absolute`,
+        timeout: 10_000,
+      });
+      assert.strictEqual(response.status, 200);
+      assert.strictEqual(await response.text(), "via-proxy");
+      assert.deepStrictEqual(seen, [{ method: "GET", url: target }]);
+
+      seen.length = 0;
+      await assert.rejects(wreqFetch(target, { proxy: `http://127.0.0.1:${port}`, timeout: 10_000 }));
+      assert.deepStrictEqual(seen, [{ method: "CONNECT", url: "force-absolute.invalid:443" }]);
+    } finally {
+      await new Promise<void>((resolve, reject) => proxyServer.close((error) => (error ? reject(error) : resolve())));
+    }
+  });
+
   test("rejects closed transports", async () => {
     const transport = await createTransport({ browser: "chrome_142" });
     await transport.close();

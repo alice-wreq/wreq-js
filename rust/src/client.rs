@@ -847,6 +847,24 @@ async fn make_request_inner(
     })
 }
 
+/// alice-wreq: URL fragment that opts a proxy into absolute-form for HTTPS targets.
+///
+/// `http://proxy:8080#force-absolute` sends `GET https://host/path` to the proxy instead of
+/// opening a CONNECT tunnel (wreq-rust `Proxy::force_absolute`). Fragments carry no meaning
+/// in proxy URLs, and the proxy string is already part of the session/transport key, so
+/// marked and unmarked proxies never share pooled connections.
+const FORCE_ABSOLUTE_PROXY_MARKER: &str = "#force-absolute";
+
+pub(crate) fn build_proxy(proxy_url: &str) -> Result<Proxy> {
+    let (url, force_absolute) = match proxy_url.strip_suffix(FORCE_ABSOLUTE_PROXY_MARKER) {
+        Some(url) => (url, true),
+        None => (proxy_url, false),
+    };
+    Ok(Proxy::all(url)
+        .context("Failed to create proxy")?
+        .force_absolute(force_absolute))
+}
+
 /// Build a client for explicit transports (full pooling config).
 fn build_client(config: &TransportConfig) -> Result<ResolvedClient> {
     let emulation = resolve_emulation(
@@ -859,8 +877,7 @@ fn build_client(config: &TransportConfig) -> Result<ResolvedClient> {
     let mut client_builder = HttpClient::builder().emulation(emulation);
 
     if let Some(proxy_url) = config.proxy.as_deref() {
-        let proxy = Proxy::all(proxy_url).context("Failed to create proxy")?;
-        client_builder = client_builder.proxy(proxy);
+        client_builder = client_builder.proxy(build_proxy(proxy_url)?);
     }
 
     if config.insecure {
@@ -920,8 +937,7 @@ fn build_ephemeral_client(config: &SessionConfig) -> Result<ResolvedClient> {
         .pool_max_idle_per_host(0);
 
     if let Some(proxy_url) = config.proxy.as_deref() {
-        let proxy = Proxy::all(proxy_url).context("Failed to create proxy")?;
-        client_builder = client_builder.proxy(proxy);
+        client_builder = client_builder.proxy(build_proxy(proxy_url)?);
     }
 
     if config.insecure {
@@ -1082,6 +1098,14 @@ mod tests {
             }
             other => panic!("expected cookies for the ws origin, got {other:?}"),
         }
+    }
+
+    #[test]
+    fn build_proxy_accepts_force_absolute_marker() {
+        assert!(build_proxy("http://127.0.0.1:8080").is_ok());
+        assert!(build_proxy("http://127.0.0.1:8080#force-absolute").is_ok());
+        assert!(build_proxy("http://user:pass@127.0.0.1:8080#force-absolute").is_ok());
+        assert!(build_proxy("socks5://127.0.0.1:1080#force-absolute").is_ok());
     }
 
     fn base_request_options() -> RequestOptions {
