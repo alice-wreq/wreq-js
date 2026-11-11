@@ -1795,6 +1795,41 @@ mod_generator!(
     ]
 );
 
+// peet 실측 Chrome/150 (JA4 t13d1516h2_8daaf6152771_806a8c22fdea,
+// Akamai 1:65536;2:0;4:6291456;6:262144|15663105|0|m,a,s,p) — TLS/H2 = v132 계열
+mod_generator!(
+    v150,
+    v132::build_emulation,
+    header_initializer_with_zstd_priority,
+    [
+        (
+            MacOS,
+            r#""Not;A=Brand";v="8", "Chromium";v="150", "Google Chrome";v="150""#,
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36"
+        ),
+        (
+            Linux,
+            r#""Not;A=Brand";v="8", "Chromium";v="150", "Google Chrome";v="150""#,
+            "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36"
+        ),
+        (
+            Android,
+            r#""Not;A=Brand";v="8", "Chromium";v="150", "Google Chrome";v="150""#,
+            "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Mobile Safari/537.36"
+        ),
+        (
+            Windows,
+            r#""Not;A=Brand";v="8", "Chromium";v="150", "Google Chrome";v="150""#,
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36"
+        ),
+        (
+            IOS,
+            r#""Not;A=Brand";v="8", "Chromium";v="150", "Google Chrome";v="150""#,
+            "Mozilla/5.0 (iPhone; CPU iPhone OS 18_7_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/150.0.0.0 Mobile/15E148 Safari/604.1"
+        )
+    ]
+);
+
 mod_generator!(
     edge143,
     v132::build_emulation,

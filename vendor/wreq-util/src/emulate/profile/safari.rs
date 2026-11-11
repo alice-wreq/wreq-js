@@ -193,6 +193,21 @@ mod_generator!(
     "Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.2 Mobile/15E148 Safari/604.1"
 );
 
+// Safari iOS 26.6 — peet tls.peet.ws 실측 (2026-07) 1:1
+//   ja3_hash: ecdf4f49dd59effc439639da29186671
+//   ja4: t13d2013h2_a09f3c656075_7f0f34a4126d
+//   peetprint_hash: 62b834de729e78a9f0ebd1dd099314a7
+//   akamai: 2:0;3:100;4:2097152;9:1|10420225|0|m,s,a,p
+// TLS: CIPHER_LIST_3 + SIGALGS_LIST_2 + CURVES_2 (X25519MLKEM768)
+// H2: http2_options!(7) — SETTINGS 4종 순서 + window m,s,a,p
+mod_generator!(
+    safari_ios_26_6,
+    tls_options!(3, CIPHER_LIST_3, SIGALGS_LIST_2, CURVES_2),
+    http2_options!(7),
+    header_initializer_for_ios_26_6,
+    "Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.6 Mobile/15E148 Safari/604.1"
+);
+
 mod_generator!(
     safari26_2,
     safari18_5::build_emulation,

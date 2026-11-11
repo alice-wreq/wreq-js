@@ -50,6 +50,18 @@ macro_rules! settings_order {
             ])
             .build()
     };
+    // peet Safari iOS 26.6 — 실측 4 settings only
+    //   ENABLE_PUSH=0; MAX_CONCURRENT_STREAMS=100; INITIAL_WINDOW_SIZE=2097152; NO_RFC7540_PRIORITIES=1
+    (3) => {
+        SettingsOrder::builder()
+            .extend([
+                SettingId::EnablePush,
+                SettingId::MaxConcurrentStreams,
+                SettingId::InitialWindowSize,
+                SettingId::NoRfc7540Priorities,
+            ])
+            .build()
+    };
 }
 
 macro_rules! http2_options {
@@ -111,6 +123,19 @@ macro_rules! http2_options {
             .no_rfc7540_priorities(true)
             .headers_pseudo_order(headers_pseudo_order!(2))
             .settings_order(settings_order!(2))
+            .build()
+    };
+    // peet tls.peet.ws Safari iOS 26.6 (2026-07)
+    // akamai: 2:0;3:100;4:2097152;9:1|10420225|0|m,s,a,p
+    // WINDOW_UPDATE = 10485760 - 65535 = 10420225
+    (7) => {
+        http2_options!(@base Http2Options::builder())
+            .initial_window_size(2097152)
+            .initial_connection_window_size(10485760)
+            .enable_push(false)
+            .no_rfc7540_priorities(true)
+            .headers_pseudo_order(headers_pseudo_order!(2))
+            .settings_order(settings_order!(3))
             .build()
     };
 }

@@ -57,3 +57,28 @@ pub fn header_initializer_for_18(ua: &'static str) -> HeaderMap {
     );
     headers
 }
+
+/// peet Safari iOS 26.6 document 요청 헤더 순서/값
+///   sec-fetch-dest → user-agent → accept → sec-fetch-site → sec-fetch-mode
+///   → accept-language(ko) → priority → accept-encoding(+zstd)
+#[inline]
+pub fn header_initializer_for_ios_26_6(ua: &'static str) -> HeaderMap {
+    let mut headers = HeaderMap::new();
+    headers.insert("sec-fetch-dest", HeaderValue::from_static("document"));
+    headers.insert(USER_AGENT, HeaderValue::from_static(ua));
+    headers.insert(
+        ACCEPT,
+        HeaderValue::from_static("text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"),
+    );
+    headers.insert("sec-fetch-site", HeaderValue::from_static("none"));
+    headers.insert("sec-fetch-mode", HeaderValue::from_static("navigate"));
+    headers.insert(ACCEPT_LANGUAGE, HeaderValue::from_static("ko-KR,ko;q=0.9"));
+    headers.insert("priority", HeaderValue::from_static("u=0, i"));
+    // peet: accept-encoding: gzip, deflate, br, zstd
+    // (emulation-compression feature 없이도 헤더 문자열 고정 — 실측 정합)
+    headers.insert(
+        "accept-encoding",
+        HeaderValue::from_static("gzip, deflate, br, zstd"),
+    );
+    headers
+}

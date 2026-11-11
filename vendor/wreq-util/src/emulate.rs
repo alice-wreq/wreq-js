@@ -60,6 +60,8 @@ define_enum!(
     Chrome147 => ("chrome_147", v147::emulation),
     Chrome148 => ("chrome_148", v148::emulation),
     Chrome149 => ("chrome_149", v149::emulation),
+    // alice-wreq: peet-measured Chrome 150 (TLS/H2 = v132 family)
+    Chrome150 => ("chrome_150", v150::emulation),
 
     // Edge versions
     Edge101 => ("edge_101", edge101::emulation),
@@ -152,6 +154,8 @@ define_enum!(
     SafariIpad26_2 => ("safari_ipad_26.2", safari_ipad_26_2::emulation),
     SafariIos26 => ("safari_ios_26", safari_ios_26::emulation),
     SafariIos26_2 => ("safari_ios_26.2", safari_ios_26_2::emulation),
+    // alice-wreq: peet-measured Safari iOS 26.6
+    SafariIos26_6 => ("safari_ios_26.6", safari_ios_26_6::emulation),
 
     // OkHttp versions
     OkHttp3_9 => ("okhttp_3.9", okhttp3_9::emulation),
@@ -300,7 +304,8 @@ impl Emulation {
                 weight: 7141,
                 platforms: &[Windows, MacOS, Linux, Android],
                 profiles: &[
-                    Chrome149, Chrome148, Chrome147, Chrome146, Chrome145, Chrome144, Chrome143,
+                    Chrome150, Chrome149, Chrome148, Chrome147, Chrome146, Chrome145, Chrome144,
+                    Chrome143,
                 ],
             },
             Class {
