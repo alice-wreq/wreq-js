@@ -40,5 +40,13 @@ Files:
 - `src/emulate/profile/chrome.rs` — `v150` (`v132::build_emulation`, `header_initializer_with_zstd_priority`)
 - `src/emulate.rs` — `Chrome150 => "chrome_150"`, added to the random-profile Chrome class
 
-When a wreq-util release ships `chrome_150`, compare its fingerprint with the
-values above and drop this patch if they match.
+**Known gap (verified 2026-11-11 on tls.peet.ws):** HTTP/2 (akamai) and JA4 a/b match,
+but JA4 c differs — we produce `…_d8a2da3f94cd`, real Chrome 150 is `…_806a8c22fdea`.
+Real Chrome 150 advertises ML-DSA signature algorithms first
+(`mldsa44:mldsa65:mldsa87:` + v132 list, = upstream main's `NEW_SIGALGS_LIST`; the hash of
+that list reproduces `806a8c22fdea` exactly). btls **0.5.6** (latest on crates.io) rejects
+these names (`INVALID_SIGNATURE_ALGORITHM`); upstream only supports them via an unreleased
+btls git revision that also breaks the wreq 0.16.3 API.
+
+When a btls release with ML-DSA ships and wreq/wreq-util releases adopt it, switch to
+upstream's `chrome_150` (`tls_options!(8, CURVES_3, NEW_SIGALGS_LIST)`) and drop this patch.
