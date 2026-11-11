@@ -10,6 +10,10 @@ on:
         description: Build only macOS ARM64 (no release or npm publish)
         type: boolean
         default: false
+      publish_release:
+        description: Publish an existing release tag to npm using its native assets (no rebuild)
+        type: string
+        default: ""
   repository_dispatch:
     types: [wreq-rust-updated]
 
@@ -19,6 +23,7 @@ permissions:
 
 jobs:
   build:
+    if: ${{ !inputs.publish_release }}
     strategy:
       fail-fast: false
       matrix:
@@ -152,7 +157,7 @@ jobs:
 
   release:
     needs: build
-    if: always() && !cancelled() && !inputs.macos_only && (github.event_name == 'workflow_dispatch' || github.event_name == 'repository_dispatch' || (github.event_name == 'push' && (startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')))
+    if: always() && !cancelled() && !inputs.macos_only && !inputs.publish_release && (github.event_name == 'workflow_dispatch' || github.event_name == 'repository_dispatch' || (github.event_name == 'push' && (startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')))
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -195,10 +200,9 @@ jobs:
     # Only version tags (v3.0.0) — not every main push prerelease build-*
     if: >
       always() && !cancelled() &&
-      needs.release.result == 'success' &&
       (
-        (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')) ||
-        (github.event_name == 'workflow_dispatch' && startsWith(github.ref, 'refs/tags/v'))
+        (github.event_name == 'workflow_dispatch' && inputs.publish_release && !inputs.macos_only) ||
+        (needs.release.result == 'success' && startsWith(github.ref, 'refs/tags/v'))
       )
     runs-on: ubuntu-latest
     permissions:
@@ -206,6 +210,8 @@ jobs:
       id-token: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.publish_release || github.sha }}
 
       - uses: actions/setup-node@v4
         with:
@@ -221,10 +227,21 @@ jobs:
           WREQ_JS_SKIP_POSTINSTALL: "1"
 
       - uses: actions/download-artifact@v4
+        if: ${{ !inputs.publish_release }}
         with:
           path: artifacts
           pattern: node-*
           merge-multiple: true
+
+      - name: Download existing release natives
+        if: ${{ inputs.publish_release }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.publish_release }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          test "$RELEASE_TAG" = "v$(node -p 'require("./package.json").version')"
+          gh release download "$RELEASE_TAG" --repo "$REPOSITORY" --pattern 'wreq-js.*.node' --dir artifacts
 
       - name: Stage natives + build TS
         shell: bash
