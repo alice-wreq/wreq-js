@@ -12,7 +12,7 @@ crate-type = ["cdylib"]
 # HTTP client with browser impersonation.
 # The crates.io requirement is kept as-is; [patch.crates-io] below swaps in the
 # alice-wreq/wreq-rust fork (also for vendor/wreq-util, so only one wreq is built).
-wreq = { version = "0.16.3", default-features = false, features = ["cookies", "gzip", "brotli", "deflate", "zstd", "charset", "system-proxy", "socks", "ws", "stream", "webpki-roots", "tokio-rt"] }
+wreq = { version = "0.16.3", default-features = false, features = ["cookies-psl", "gzip", "brotli", "deflate", "zstd", "charset", "system-proxy", "socks", "ws", "stream", "webpki-roots", "tokio-rt"] }
 wreq-util = { path = "../vendor/wreq-util", features = ["emulation-serde", "tokio-rt", "emulation-compression"] }
 webpki-root-certs = "1.0.11"
 
@@ -64,4 +64,4 @@ debug = false
 # Pinned to a revision for reproducible native builds. For local engine work, override with:
 #   cargo build --config 'patch.crates-io.wreq.path="../../wreq-rust"'
 [patch.crates-io]
-wreq = { git = "https://github.com/alice-wreq/wreq-rust", rev = "49f366c6b817b2a3ae0459769b5ccbb84bcd158b" }
+wreq = { git = "https://github.com/alice-wreq/wreq-rust", rev = "489b99ec6b37e96c0b96636946661a98a27e5531" }

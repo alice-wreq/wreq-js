@@ -689,26 +689,29 @@ describe("WebSocket", () => {
   });
 
   test("session.websocket stores Set-Cookie from the upgrade response in the session jar", async () => {
-    const session = await createSession({ browser: "chrome_142" });
+    const session = await createSession({ browser: "chrome_142", proxy: httpUrl("/") });
 
     try {
       const url = new URL(WS_TEST_URL);
-      url.searchParams.append("setCookie", "upgradeCookie=101");
-      url.searchParams.append("setCookie", "secondUpgradeCookie=also");
+      url.hostname = "api.example.co.uk";
+      url.searchParams.set("setUpgradeCookies", "1");
 
       const ws = await session.websocket(url);
       ws.close();
       await waitForClose(ws);
 
-      const response = await session.fetch(httpUrl("/cookies"), { timeout: 5_000 });
+      const response = await session.fetch("http://api.example.co.uk/cookies", { timeout: 5_000 });
       const body = (await response.json()) as { cookies: Record<string, string> };
 
       assert.strictEqual(body.cookies.upgradeCookie, "101");
       assert.strictEqual(body.cookies.secondUpgradeCookie, "also");
 
+      assert.deepStrictEqual(session.getCookies("http://www.example.co.uk/"), { secondUpgradeCookie: "also" });
+      assert.deepStrictEqual(session.getCookies("http://other.co.uk/"), {});
+
       const other = await createSession({ browser: "chrome_142" });
       try {
-        assert.deepStrictEqual(other.getCookies(httpUrl("/cookies")), {});
+        assert.deepStrictEqual(other.getCookies("http://api.example.co.uk/"), {});
       } finally {
         await other.close();
       }

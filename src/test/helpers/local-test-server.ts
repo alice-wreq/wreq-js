@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
-import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
+import { createServer, type IncomingMessage, type ServerResponse, validateHeaderValue } from "node:http";
 import { createServer as createHttpsServer } from "node:https";
 import type { AddressInfo, Socket } from "node:net";
 import { dirname, resolve } from "node:path";
@@ -511,10 +511,15 @@ export async function startLocalTestServer(): Promise<LocalTestServer> {
         `Sec-WebSocket-Accept: ${acceptKey}`,
       ];
       if (selectedProtocol) {
+        validateHeaderValue("Sec-WebSocket-Protocol", selectedProtocol);
         responseHeaders.push(`Sec-WebSocket-Protocol: ${selectedProtocol}`);
       }
-      for (const cookie of url.searchParams.getAll("setCookie")) {
-        responseHeaders.push(`Set-Cookie: ${cookie}; Path=/`);
+      if (url.searchParams.has("setUpgradeCookies")) {
+        responseHeaders.push(
+          "Set-Cookie: upgradeCookie=101; Path=/",
+          "Set-Cookie: secondUpgradeCookie=also; Domain=example.co.uk; Path=/",
+          "Set-Cookie: outsideSite=invalid; Domain=co.uk; Path=/",
+        );
       }
 
       socket.write(`${responseHeaders.join("\r\n")}\r\n\r\n`);
