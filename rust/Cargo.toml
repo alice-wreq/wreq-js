@@ -1,6 +1,6 @@
 [package]
 name = "wreq-js"
-version = "3.2.1"
+version = "3.2.3"
 edition = "2024"
 license = "MIT"
 authors = ["Oleksandr Herasymov", "will-work-for-meal"]
@@ -10,9 +10,7 @@ crate-type = ["cdylib"]
 
 [dependencies]
 # HTTP client with browser impersonation.
-# The crates.io requirement is kept as-is; [patch.crates-io] below swaps in the
-# alice-wreq/wreq-rust fork (also for vendor/wreq-util, so only one wreq is built).
-wreq = { version = "0.16.3", default-features = false, features = ["cookies-psl", "gzip", "brotli", "deflate", "zstd", "charset", "system-proxy", "socks", "ws", "stream", "webpki-roots", "tokio-rt"] }
+wreq = { git = "https://github.com/alice-wreq/wreq-rust", rev = "21bca92c27a7acf7317c45acc3ccacfa79720f26", default-features = false, features = ["cookies-psl", "gzip", "brotli", "deflate", "zstd", "charset", "system-proxy", "socks", "ws", "stream", "webpki-roots", "tokio-rt"] }
 wreq-util = { path = "../vendor/wreq-util", features = ["emulation-serde", "tokio-rt", "emulation-compression"] }
 webpki-root-certs = "1.0.11"
 
@@ -59,9 +57,3 @@ opt-level = 3
 lto = true
 codegen-units = 1
 debug = false
-
-# alice-wreq: engine = alice-wreq/wreq-rust (upstream wreq v0.16.3 + force_absolute).
-# Pinned to a revision for reproducible native builds. For local engine work, override with:
-#   cargo build --config 'patch.crates-io.wreq.path="../../wreq-rust"'
-[patch.crates-io]
-wreq = { git = "https://github.com/alice-wreq/wreq-rust", rev = "0347d0e35dc8efd4368b7cec656efaa548da4786" }

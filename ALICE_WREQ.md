@@ -6,13 +6,12 @@ Fork of [sqdshguy/wreq-js](https://github.com/sqdshguy/wreq-js), published as
 | Layer                  | Source                                                                            | Base                                                               |
 | ---------------------- | --------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
 | JS/TS + Neon addon     | this repo                                                                         | upstream wreq-js **v3.2.0+** (`master` @ `6576746`)                |
-| Engine (`wreq`)        | [`alice-wreq/wreq-rust`](https://github.com/alice-wreq/wreq-rust), rev `0347d0e3` | upstream wreq **v0.16.3**                                          |
+| Engine (`wreq`)        | [`alice-wreq/wreq-rust`](https://github.com/alice-wreq/wreq-rust), rev `21bca92c` | upstream wreq **v0.16.3**                                          |
 | Profiles (`wreq-util`) | `vendor/wreq-util`                                                                | upstream wreq-util **0.2.1** + patches (`vendor/ALICE_PATCHES.md`) |
 
 ## What differs from upstream
 
-1. **Engine** — `rust/Cargo.toml` keeps upstream's `wreq = "0.16.3"` requirement and swaps
-   in the fork via `[patch.crates-io]` (applies to vendored wreq-util too → one `wreq` build).
+1. **Engine** — `rust/Cargo.toml` and the vendored profile crate pin the same wreq-rust commit.
 2. **Profiles** — `safari_ios_26.6` (peet-measured) and `chrome_150` (wreq-util 0.2.1 has
    no 150 yet). Aliases resolve `chrome → chrome_150`, `safari_ios → safari_ios_26.6`.
 3. **Proxy `#force-absolute`** — `proxy: "http://proxy:8080#force-absolute"` sends HTTPS
@@ -45,7 +44,7 @@ npm test
 
 # against a local wreq-rust checkout (../wreq-rust):
 npx napi build --platform --release --manifest-path rust/Cargo.toml -- \
-  --config 'patch.crates-io.wreq.path="../wreq-rust"'
+  --config 'patch."https://github.com/alice-wreq/wreq-rust".wreq.path="../wreq-rust"'
 ```
 
 wreq 0.16.3 requires **rustc ≥ 1.98**.
@@ -58,8 +57,8 @@ git merge upstream/master
 ```
 
 - **wreq-rust**: merge upstream **release tags** only (not `main`) — wreq-util releases lag
-  behind wreq `main` API changes. Tag the result `alice-vX.Y.Z` and bump the
-  `[patch.crates-io]` tag here.
+  behind wreq `main` API changes. Pin the resulting commit in both `rust/Cargo.toml` and
+  `vendor/wreq-util/Cargo.toml`, then update `rust/Cargo.lock`.
 - **wreq-util**: replace `vendor/wreq-util` with the pristine crate, re-apply
   `vendor/ALICE_PATCHES.md`, re-check fingerprints on tls.peet.ws.
 
