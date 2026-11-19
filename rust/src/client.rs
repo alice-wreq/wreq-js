@@ -15,7 +15,7 @@ use tokio::sync::Mutex;
 use tokio_util::sync::CancellationToken;
 use uuid::Uuid;
 use wreq::cookie::Jar;
-use wreq::header::OrigHeaderMap;
+use wreq::header::{HeaderMap, OrigHeaderMap};
 use wreq::tls::TlsInfo;
 use wreq::tls::trust::CertStore;
 use wreq::{Client as HttpClient, Method, Proxy, redirect};
@@ -270,6 +270,7 @@ impl TransportConfig {
 pub(crate) struct ResolvedClient {
     pub(crate) http_client: HttpClient,
     pub(crate) emulation_orig_headers: OrigHeaderMap,
+    pub(crate) emulation_headers: HeaderMap,
 }
 
 #[derive(Clone)]
@@ -597,6 +598,8 @@ impl EphemeralClientManager {
     }
 }
 
+const NAVIGATION_ONLY_HEADERS: [&str; 2] = ["upgrade-insecure-requests", "sec-fetch-user"];
+
 /// Resolve client: explicit transport > ephemeral cache > fresh client.
 fn client_for_request(options: &RequestOptions) -> Result<Arc<ResolvedClient>> {
     if let Some(ref tid) = options.transport_id {
@@ -676,6 +679,40 @@ async fn make_request_inner(
 
     // Build request
     let mut request = resolved.http_client.request(request_method, &url);
+
+    // alice-wreq: chrome profiles add the navigation-only `upgrade-insecure-requests` and
+    // `sec-fetch-user` to every request. Real Chrome never sends them with a non-navigate
+    // `sec-fetch-mode` (Naver shopping answers 418). Drop them from the defaults then,
+    // unless the caller set them.
+    if !disable_default_headers {
+        let caller_has = |name: &str| headers.iter().any(|(k, _)| k.eq_ignore_ascii_case(name));
+        let mode = headers
+            .iter()
+            .find(|(k, _)| k.eq_ignore_ascii_case("sec-fetch-mode"))
+            .map(|(_, v)| v.as_bytes())
+            .or_else(|| {
+                resolved
+                    .emulation_headers
+                    .get("sec-fetch-mode")
+                    .map(|v| v.as_bytes())
+            });
+        let non_navigate = mode.is_some_and(|m| !m.eq_ignore_ascii_case(b"navigate"));
+        if non_navigate
+            && NAVIGATION_ONLY_HEADERS
+                .iter()
+                .any(|n| !caller_has(n) && resolved.emulation_headers.contains_key(*n))
+        {
+            let mut defaults = resolved.emulation_headers.clone();
+            for name in NAVIGATION_ONLY_HEADERS {
+                defaults.remove(name);
+            }
+            // Caller headers replace defaults of the same name, as wreq's own merge does.
+            for (key, _) in headers.iter() {
+                defaults.remove(key.as_str());
+            }
+            request = request.default_headers(false).headers(defaults);
+        }
+    }
 
     // Apply custom headers and preserve their original casing.
     // Merge with emulation-level origHeaders so that custom emulation header
@@ -873,6 +910,7 @@ fn build_client(config: &TransportConfig) -> Result<ResolvedClient> {
         config.emulation_json.as_deref(),
     )?;
     let emulation_orig_headers = emulation.orig_headers.clone();
+    let emulation_headers = emulation.headers.clone();
 
     let mut client_builder = HttpClient::builder().emulation(emulation);
 
@@ -920,6 +958,7 @@ fn build_client(config: &TransportConfig) -> Result<ResolvedClient> {
     Ok(ResolvedClient {
         http_client,
         emulation_orig_headers,
+        emulation_headers,
     })
 }
 
@@ -931,6 +970,7 @@ fn build_ephemeral_client(config: &SessionConfig) -> Result<ResolvedClient> {
         config.emulation_json.as_deref(),
     )?;
     let emulation_orig_headers = emulation.orig_headers.clone();
+    let emulation_headers = emulation.headers.clone();
 
     let mut client_builder = HttpClient::builder()
         .emulation(emulation)
@@ -968,6 +1008,7 @@ fn build_ephemeral_client(config: &SessionConfig) -> Result<ResolvedClient> {
     Ok(ResolvedClient {
         http_client,
         emulation_orig_headers,
+        emulation_headers,
     })
 }
 

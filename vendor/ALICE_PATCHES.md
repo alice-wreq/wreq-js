@@ -50,3 +50,16 @@ btls git revision that also breaks the wreq 0.16.3 API.
 
 When a btls release with ML-DSA ships and wreq/wreq-util releases adopt it, switch to
 upstream's `chrome_150` (`tls_options!(8, CURVES_3, NEW_SIGALGS_LIST)`) and drop this patch.
+
+## Navigation-only defaults (`rust/src/client.rs`, wreq-js 3.2.1)
+
+Not a wreq-util file patch: chrome `header_initializer*` adds `upgrade-insecure-requests: 1`
+and `sec-fetch-user: ?1` to every request. Real Chrome sends them only on navigations;
+with `sec-fetch-mode: cors` Naver shopping answers HTTP 418.
+
+`make_request_inner`: when default headers are on and the final `sec-fetch-mode`
+(caller, else profile default) is present and not `navigate`, the request skips the
+client defaults and re-applies them minus those two (caller headers still win by name).
+A caller that sets either header explicitly keeps it. No `sec-fetch-mode` → unchanged.
+WebSocket requests are not touched. Test: `src/test/http/headers.spec.ts`
+("drops navigation-only defaults …").

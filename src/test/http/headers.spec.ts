@@ -44,6 +44,27 @@ describe("HTTP headers", () => {
     assert.ok(accept.includes(customAccept), "Should include custom Accept header");
   });
 
+  test("drops navigation-only defaults for non-navigate sec-fetch-mode", async () => {
+    const get = async (headers: Record<string, string>) => {
+      const response = await wreqFetch(httpUrl("/headers"), { browser: "chrome_142", headers, timeout: 10000 });
+      return (await response.json<{ headers: Record<string, string> }>()).headers;
+    };
+
+    const cors = await get({ "sec-fetch-mode": "cors" });
+    assert.strictEqual(cors["Upgrade-Insecure-Requests"], undefined);
+    assert.strictEqual(cors["Sec-Fetch-User"], undefined);
+    assert.ok(cors["User-Agent"], "other defaults stay");
+
+    const nav = await get({});
+    assert.strictEqual(nav["Sec-Fetch-Mode"], "navigate");
+    assert.strictEqual(nav["Upgrade-Insecure-Requests"], "1");
+    assert.strictEqual(nav["Sec-Fetch-User"], "?1");
+
+    const explicit = await get({ "sec-fetch-mode": "cors", "sec-fetch-user": "?1" });
+    assert.strictEqual(explicit["Sec-Fetch-User"], "?1");
+    assert.strictEqual(explicit["Upgrade-Insecure-Requests"], undefined);
+  });
+
   test("maintains header ordering for Headers instances", async () => {
     const orderedHeaders = new Headers();
     orderedHeaders.append("X-First", "one");
