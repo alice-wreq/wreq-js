@@ -131,7 +131,8 @@ version = "0.23.2"
 optional = true
 
 [dependencies.wreq]
-version = "0.16.0"
+git = "https://github.com/alice-wreq/wreq-rust"
+rev = "927cc20cc7c8c15e8d8a6eaf7939a37e92650b7a"
 default-features = false
 
 [dependencies.zstd]
@@ -164,4 +165,5 @@ version = "1.48.0"
 features = ["full"]
 
 [dev-dependencies.wreq]
-version = "0.16.0"
+git = "https://github.com/alice-wreq/wreq-rust"
+rev = "927cc20cc7c8c15e8d8a6eaf7939a37e92650b7a"
