@@ -52,7 +52,7 @@ serde_json = "1.0.154"
 wreq-util = { path = "../vendor/wreq-util", features = ["emulation-serde", "tokio-rt", "emulation-compression"] }
 
 [dev-dependencies]
-btls = "0.5.6"
+btls = { git = "https://github.com/alice-wreq/btls", tag = "alice-v0.5.6" }
 
 [profile.release]
 opt-level = 3
@@ -61,7 +61,7 @@ codegen-units = 1
 debug = false
 
 # alice-wreq: engine = alice-wreq/wreq-rust (upstream wreq v0.16.3 + force_absolute).
-# Pinned to a tag for reproducible native builds. For local engine work, override with:
+# Pinned to a revision for reproducible native builds. For local engine work, override with:
 #   cargo build --config 'patch.crates-io.wreq.path="../../wreq-rust"'
 [patch.crates-io]
-wreq = { git = "https://github.com/alice-wreq/wreq-rust", tag = "alice-v0.16.3" }
+wreq = { git = "https://github.com/alice-wreq/wreq-rust", rev = "49f366c6b817b2a3ae0459769b5ccbb84bcd158b" }

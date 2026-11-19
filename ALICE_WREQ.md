@@ -3,11 +3,11 @@
 Fork of [sqdshguy/wreq-js](https://github.com/sqdshguy/wreq-js), published as
 **`@alice-doctor/wreq-js`**.
 
-| Layer                  | Source                                                                                 | Base                                                               |
-| ---------------------- | -------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
-| JS/TS + Neon addon     | this repo                                                                              | upstream wreq-js **v3.2.0+** (`master` @ `6576746`)                |
-| Engine (`wreq`)        | [`alice-wreq/wreq-rust`](https://github.com/alice-wreq/wreq-rust), tag `alice-v0.16.3` | upstream wreq **v0.16.3**                                          |
-| Profiles (`wreq-util`) | `vendor/wreq-util`                                                                     | upstream wreq-util **0.2.1** + patches (`vendor/ALICE_PATCHES.md`) |
+| Layer                  | Source                                                                            | Base                                                               |
+| ---------------------- | --------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| JS/TS + Neon addon     | this repo                                                                         | upstream wreq-js **v3.2.0+** (`master` @ `6576746`)                |
+| Engine (`wreq`)        | [`alice-wreq/wreq-rust`](https://github.com/alice-wreq/wreq-rust), rev `49f366c6` | upstream wreq **v0.16.3**                                          |
+| Profiles (`wreq-util`) | `vendor/wreq-util`                                                                | upstream wreq-util **0.2.1** + patches (`vendor/ALICE_PATCHES.md`) |
 
 ## What differs from upstream
 
@@ -40,7 +40,7 @@ import { fetch, getProfiles } from "@alice-doctor/wreq-js";
 
 ```bash
 npm install
-npm run build            # build:rust + build:ts (fetches wreq-rust tag from GitHub)
+npm run build            # build:rust + build:ts (fetches pinned wreq-rust revision from GitHub)
 npm test
 
 # against a local wreq-rust checkout (../wreq-rust):

@@ -228,11 +228,11 @@ mod_generator!(
         ),
         (
             Windows,
-            "Mozilla/5.0 (Windows NT 10.0; rv:136.0) Gecko/20100101 Firefox/139.0"
+            "Mozilla/5.0 (Windows NT 10.0; rv:139.0) Gecko/20100101 Firefox/139.0"
         ),
         (
             Linux,
-            "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:136.0) Gecko/20100101 Firefox/139.0"
+            "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:139.0) Gecko/20100101 Firefox/139.0"
         )
     ]
 );
@@ -380,7 +380,7 @@ mod_generator!(
 mod_generator!(
     ff147,
     ff135::build_emulation,
-    header_initializer_with_zstd,
+    header_initializer_with_zstd_q09,
     [
         (
             Windows,
@@ -408,7 +408,7 @@ mod_generator!(
 mod_generator!(
     ff148,
     ff135::build_emulation,
-    header_initializer_with_zstd,
+    header_initializer_with_zstd_q09,
     [
         (
             Windows,
@@ -436,7 +436,7 @@ mod_generator!(
 mod_generator!(
     ff149,
     ff135::build_emulation,
-    header_initializer_with_zstd,
+    header_initializer_with_zstd_q09,
     [
         (
             Windows,
@@ -463,8 +463,9 @@ mod_generator!(
 
 mod_generator!(
     ff150,
-    ff135::build_emulation,
-    header_initializer_with_zstd,
+    tls_options!(4, CIPHER_LIST_3, CURVES_2, KEY_SHARES_2),
+    http2_options!(1),
+    header_initializer_with_zstd_q09,
     [
         (
             Windows,
@@ -491,8 +492,8 @@ mod_generator!(
 
 mod_generator!(
     ff151,
-    ff135::build_emulation,
-    header_initializer_with_zstd,
+    ff150::build_emulation,
+    header_initializer_with_zstd_q09,
     [
         (
             Windows,

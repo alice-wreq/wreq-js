@@ -6,6 +6,11 @@ CRLF line endings from the crates.io tarball were normalized to LF.
 When bumping the base, replace `vendor/wreq-util` with the pristine crate and
 re-apply the patches below (keep them in a separate commit).
 
+## Upstream backports
+
+- wreq-util #118 (94972e7) corrects User-Agent and sec-ch-ua literals.
+- wreq-util #122 (3d69aa0) corrects Accept-Language for Firefox 147–151 and the TLS cipher list for 150–151.
+
 ## Safari iOS 26.6 (`safari_ios_26.6`)
 
 peet (tls.peet.ws) measurement, 2026-07:
