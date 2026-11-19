@@ -6,7 +6,7 @@ Fork of [sqdshguy/wreq-js](https://github.com/sqdshguy/wreq-js), published as
 | Layer                  | Source                                                                            | Base                                                               |
 | ---------------------- | --------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
 | JS/TS + Neon addon     | this repo                                                                         | upstream wreq-js **v3.2.0+** (`master` @ `6576746`)                |
-| Engine (`wreq`)        | [`alice-wreq/wreq-rust`](https://github.com/alice-wreq/wreq-rust), rev `489b99ec` | upstream wreq **v0.16.3**                                          |
+| Engine (`wreq`)        | [`alice-wreq/wreq-rust`](https://github.com/alice-wreq/wreq-rust), rev `0347d0e3` | upstream wreq **v0.16.3**                                          |
 | Profiles (`wreq-util`) | `vendor/wreq-util`                                                                | upstream wreq-util **0.2.1** + patches (`vendor/ALICE_PATCHES.md`) |
 
 ## What differs from upstream

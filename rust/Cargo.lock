@@ -1956,7 +1956,7 @@ dependencies = [
 [[package]]
 name = "wreq"
 version = "0.16.3"
-source = "git+https://github.com/alice-wreq/wreq-rust?rev=489b99ec6b37e96c0b96636946661a98a27e5531#489b99ec6b37e96c0b96636946661a98a27e5531"
+source = "git+https://github.com/alice-wreq/wreq-rust?rev=0347d0e35dc8efd4368b7cec656efaa548da4786#0347d0e35dc8efd4368b7cec656efaa548da4786"
 dependencies = [
  "btls",
  "btls-sys",

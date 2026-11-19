@@ -64,4 +64,4 @@ debug = false
 # Pinned to a revision for reproducible native builds. For local engine work, override with:
 #   cargo build --config 'patch.crates-io.wreq.path="../../wreq-rust"'
 [patch.crates-io]
-wreq = { git = "https://github.com/alice-wreq/wreq-rust", rev = "489b99ec6b37e96c0b96636946661a98a27e5531" }
+wreq = { git = "https://github.com/alice-wreq/wreq-rust", rev = "0347d0e35dc8efd4368b7cec656efaa548da4786" }
